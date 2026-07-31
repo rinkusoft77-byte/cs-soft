@@ -95,6 +95,24 @@ SteamID bo'yicha saqlanadi.
 1. `VisionAssist.sln` faylini oching (ikki marta bosing).
 2. **Build > Build Solution** yoki **F6**.
 
+> ### ⚠️ F5 bosmang
+>
+> F5 bosilsa Visual Studio shunday deydi:
+> *"Проект, библиотека классов которого имеет тип «Тип выходных данных»,
+> нельзя запустить напрямую"* (ingliz tilida: *"A project with an Output Type of
+> Class Library cannot be started directly"*).
+>
+> **Bu xato emas.** CounterStrikeSharp plugini — `.dll` fayl (class library),
+> uni mustaqil ishga tushirib bo'lmaydi: uni CS2 serveri yuklaydi. Shuning
+> uchun bu loyihada F5 va Ctrl+F5 hech qachon ishlamaydi.
+>
+> | Tugma | Bu loyihada |
+> |---|---|
+> | F5 / Ctrl+F5 (Start) | ❌ ishlamaydi |
+> | **F6 / Ctrl+Shift+B (Build)** | ✅ **shu kerak** |
+>
+> Output oynasida `Build succeeded` chiqsa — hammasi joyida, DLL tayyor.
+
 Boshqa hech narsa sozlash shart emas — NuGet paketi avtomatik yuklanadi,
 `.NET 8` maqsad platformasi `Directory.Build.props` da yozilgan. Visual
 Studio 2026 bilan kelgan `.NET 10 SDK` bu loyihani muammosiz quradi.
@@ -126,9 +144,26 @@ o'tkazib yuboriladi va build baribir muvaffaqiyatli tugaydi.
 `Local.props` git'ga tushmaydi — kompyuteringizdagi yo'llar repozitoriyga
 yozilmaydi.
 
-> **Muhim:** server ishlab turganda DLL band bo'ladi va ko'chirish o'tmaydi.
-> Avval `css_plugins unload VisionAssist` qiling, keyin build qiling, so'ng
+### Kundalik ish tartibi
+
+```
+F6  →  server konsolida:  css_plugins reload VisionAssist
+```
+
+> **Muhim:** server ishlab turganda DLL band bo'ladi va ko'chirish o'tmasligi
+> mumkin. Unda: `css_plugins unload VisionAssist` → **F6** →
 > `css_plugins load VisionAssist`.
+
+### Debug qilish
+
+Plugin server jarayonida ishlaydi, shuning uchun oddiy F5 debug'i yo'q. Ikki yo'l:
+
+- **Log orqali** — kodda `Logger.LogInformation("...")` yozing, server
+  konsolida ko'rinadi. Kundalik ish uchun shu yetadi.
+- **Attach qilib** — server ishlab turganda Visual Studio'da
+  **Debug > Attach to Process** orqali `cs2.exe` (yoki Linux serverda masofadan)
+  jarayoniga ulanasiz. Buning uchun `Debug` konfiguratsiyasida build qiling,
+  `.pdb` fayli DLL yonida turishi kerak (deploy target'i uni ham ko'chiradi).
 
 ## Qurish (buyruq satridan)
 
