@@ -82,6 +82,10 @@ SteamID bo'yicha saqlanadi.
 
 ---
 
+> **Hech nima ishlamayaptimi?** DLL o'zi hech narsa qilmaydi — uni Metamod va
+> CounterStrikeSharp yuklashi kerak. Noldan to'liq o'rnatish va muammoni topish
+> tartibi: **[INSTALL.md](INSTALL.md)**
+
 ## Talablar
 
 - CS2 dedicated server (o'zingizniki)
