@@ -1,0 +1,14 @@
+* text=auto
+
+*.cs      text diff=csharp
+*.csproj  text
+*.props   text
+*.targets text
+*.json    text
+*.md      text
+
+# Visual Studio is happiest when solution files stay CRLF.
+*.sln     text eol=crlf
+
+*.dll     binary
+*.pdb     binary

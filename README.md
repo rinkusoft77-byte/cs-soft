@@ -87,18 +87,67 @@ SteamID bo'yicha saqlanadi.
 - CS2 dedicated server (o'zingizniki)
 - [Metamod:Source](https://www.sourcemm.net/downloads.php/?branch=master) (CS2 uchun dev build)
 - [CounterStrikeSharp](https://github.com/roflmuffin/CounterStrikeSharp) **v1.0.305+** (`with-runtime` versiyasi)
-- Qurish uchun .NET 8 SDK
+- Qurish uchun: **Visual Studio 2026** (".NET desktop development" workload bilan)
+  yoki .NET 8/9/10 SDK
 
-## Qurish va o'rnatish
+## Visual Studio 2026 da ishlash
+
+1. `VisionAssist.sln` faylini oching (ikki marta bosing).
+2. **Build > Build Solution** yoki **F6**.
+
+Boshqa hech narsa sozlash shart emas — NuGet paketi avtomatik yuklanadi,
+`.NET 8` maqsad platformasi `Directory.Build.props` da yozilgan. Visual
+Studio 2026 bilan kelgan `.NET 10 SDK` bu loyihani muammosiz quradi.
+
+`Solution Items` papkasida `README.md`, `.editorconfig` va sozlama fayllari
+ko'rinib turadi.
+
+### Build qilgach avtomatik serverga ko'chirish
+
+`Local.props.example` faylidan nusxa olib, uni **`Local.props`** deb nomlang va
+o'z yo'lingizni yozing:
+
+```xml
+<Project>
+  <PropertyGroup>
+    <CS2ServerPath>C:\cs2-server</CS2ServerPath>
+  </PropertyGroup>
+</Project>
+```
+
+Endi har safar **F6** bosganingizda DLL to'g'ridan-to'g'ri
+`...\addons\counterstrikesharp\plugins\VisionAssist\` papkasiga tushadi —
+qo'lda ko'chirish kerak emas.
+
+To'g'ridan-to'g'ri plugin papkasini ko'rsatmoqchi bo'lsangiz `CS2ServerPath`
+o'rniga `CS2PluginsPath` ishlating. Yo'l ko'rsatilmasa, ko'chirish qadami
+o'tkazib yuboriladi va build baribir muvaffaqiyatli tugaydi.
+
+`Local.props` git'ga tushmaydi — kompyuteringizdagi yo'llar repozitoriyga
+yozilmaydi.
+
+> **Muhim:** server ishlab turganda DLL band bo'ladi va ko'chirish o'tmaydi.
+> Avval `css_plugins unload VisionAssist` qiling, keyin build qiling, so'ng
+> `css_plugins load VisionAssist`.
+
+## Qurish (buyruq satridan)
 
 ```bash
-dotnet build -c Release src/VisionAssist/VisionAssist.csproj
+dotnet build VisionAssist.sln -c Release
 ```
 
-`bin/Release/net8.0/VisionAssist.dll` faylini serverga ko'chiring:
+Serverga bir marta ko'chirish uchun:
+
+```bash
+dotnet build VisionAssist.sln -c Release -p:CS2ServerPath=/path/to/cs2-server
+```
+
+Qo'lda ko'chirmoqchi bo'lsangiz, `src/VisionAssist/bin/Release/net8.0/` ichidagi
+`.dll`, `.deps.json` va `.runtimeconfig.json` fayllarini quyidagi papkaga
+tashlang:
 
 ```
-csgo/addons/counterstrikesharp/plugins/VisionAssist/VisionAssist.dll
+csgo/addons/counterstrikesharp/plugins/VisionAssist/
 ```
 
 Keyin serverni qayta ishga tushiring yoki konsolda:
@@ -221,3 +270,37 @@ qiymatdan iborat.
 **Nishonlar.** `planted_c4` va `hostage_entity` doim bo'yaladi; `weapon_c4` va
 defuse kit faqat yerda yotganda (`OwnerEntity` bo'sh bo'lganda) — qo'lda
 ko'tarilgan bombani bo'yash uni dushmanga oshkor qilib qo'yardi.
+
+---
+
+## Loyiha tuzilishi
+
+```
+VisionAssist.sln              Visual Studio yechimi
+Directory.Build.props         Umumiy build sozlamalari (net8.0, nullable, deploy yo'li)
+Local.props.example           Serverga avtomatik ko'chirish uchun namuna
+NuGet.config                  nuget.org manbasi
+.editorconfig                 Kod uslubi (VS avtomatik qo'llaydi)
+
+src/VisionAssist/
+├── VisionAssist.csproj       Loyiha + serverga ko'chirish target'i
+├── VisionAssistPlugin.cs     Yuklash, event'lar, timer'lar
+├── Config/
+│   ├── VisionAssistConfig.cs JSON konfiguratsiya
+│   └── Theme.cs              7 ta rang to'plami
+├── Core/
+│   ├── ColorParser.cs        Rang o'qish (#hex, r,g,b, nom)
+│   ├── Chat.cs               Chat rang teglari
+│   ├── Lang.cs               uz / ru / en matnlari
+│   ├── PlayerPreferenceStore.cs  SteamID bo'yicha shaxsiy sozlamalar
+│   └── ClientTips.cs         Tavsiya etilgan client cvar'lari
+├── Features/
+│   ├── TintController.cs     Model rangi
+│   ├── OutlineController.cs  Kontur (through-walls bloklangan)
+│   ├── RadarController.cs    To'liq radar
+│   ├── HighlightController.cs Bomba / garov / defuse kit
+│   └── HudController.cs      Katta markaziy HUD
+└── Commands/
+    ├── VisionAssistPlugin.Commands.cs  Barcha buyruqlar
+    └── VisionAssistPlugin.Menu.cs      !vision menyusi
+```

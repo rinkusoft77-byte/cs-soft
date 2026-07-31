@@ -1,8 +1,26 @@
+# Build output
 bin/
 obj/
-*.user
-*.suo
-.vs/
-.idea/
 build/
 dist/
+*.binlog
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.vsp
+*.psess
+
+# Machine-specific build settings (see Local.props.example)
+Local.props
+
+# Rider / VS Code
+.idea/
+.vscode/
+
+# NuGet
+*.nupkg
+packages/

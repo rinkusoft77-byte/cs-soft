@@ -1,0 +1,42 @@
+<Project>
+
+  <!--
+    Shared settings for every project in the solution. Visual Studio picks this
+    up automatically when the solution is opened - nothing to configure first.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Deterministic>true</Deterministic>
+
+    <!-- CounterStrikeSharp only ever loads the plugin on 64-bit Linux/Windows. -->
+    <Platforms>AnyCPU</Platforms>
+
+    <!-- Keeps the Solution Explorer tidy: no bin/obj noise in the tree. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <!--
+    Where to drop the built plugin. Set either one and Visual Studio copies the
+    output to the server on every build (Build > Build Solution, or F6).
+
+      CS2PluginsPath - full path to ...\addons\counterstrikesharp\plugins
+      CS2ServerPath  - server root; the rest of the path is worked out from it
+
+    Set them in Local.props (copy Local.props.example) or as an environment
+    variable. Leave both unset and the copy step is skipped silently.
+  -->
+  <PropertyGroup>
+    <CS2ServerPath Condition="'$(CS2ServerPath)' == ''">$(CS2_SERVER_PATH)</CS2ServerPath>
+    <CS2PluginsPath Condition="'$(CS2PluginsPath)' == ''">$(CS2_PLUGINS_PATH)</CS2PluginsPath>
+  </PropertyGroup>
+
+  <!-- Machine-specific overrides, never committed. -->
+  <Import Project="$(MSBuildThisFileDirectory)Local.props"
+          Condition="Exists('$(MSBuildThisFileDirectory)Local.props')" />
+
+</Project>

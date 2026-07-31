@@ -1,0 +1,21 @@
+<Project>
+
+  <!--
+    Copy this file to "Local.props" (same folder) and fill in your own path.
+    Local.props is git-ignored, so your machine's paths never get committed.
+
+    After that, building in Visual Studio (F6) drops VisionAssist.dll straight
+    into the server's plugin folder - no manual copying.
+  -->
+
+  <PropertyGroup>
+
+    <!-- Option A: point at the server root that contains game\csgo\ -->
+    <!-- <CS2ServerPath>C:\cs2-server</CS2ServerPath> -->
+
+    <!-- Option B: point straight at the plugins folder -->
+    <!-- <CS2PluginsPath>C:\cs2-server\game\csgo\addons\counterstrikesharp\plugins</CS2PluginsPath> -->
+
+  </PropertyGroup>
+
+</Project>
