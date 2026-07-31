@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    A real desktop program: its own always-on-top window drawn over the game,
+    with a global hotkey for the settings menu. No browser, no address bar.
+
+    TargetFramework is overridden here rather than taken from
+    Directory.Build.props because WinForms needs the -windows flavour. That also
+    means this one project only builds on Windows.
+  -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>VisionAssist.Overlay</AssemblyName>
+    <RootNamespace>VisionAssist.Overlay</RootNamespace>
+    <Version>1.0.0</Version>
+    <Product>VisionAssist Overlay</Product>
+    <Description>Always-on-top accessibility HUD for CS2, fed by Game State Integration.</Description>
+
+    <!-- No console window flashing up behind the overlay. -->
+    <DisableWinExeOutputInference>true</DisableWinExeOutputInference>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WASAPI loopback capture: reads what the speakers are playing with no
+         permission prompt at all, unlike the browser's screen-share route. -->
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reuses the GSI listener, the state store and the payload model rather
+         than growing a second copy of them. -->
+    <ProjectReference Include="..\VisionAssist.Companion\VisionAssist.Companion.csproj" />
+  </ItemGroup>
+
+</Project>

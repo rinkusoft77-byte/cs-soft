@@ -1,16 +1,22 @@
 # VisionAssist — CS2 uchun ko'rinuvchanlik to'plami
 
-Ikkita mustaqil qism:
+Uchta mustaqil qism:
 
 | Loyiha | Qayerda ishlaydi | Nima qiladi |
 |---|---|---|
 | **VisionAssist** (bu README) | faqat **o'zingiz admin bo'lgan serverda** | modellarni bo'yaydi, kontur chizadi, radarni to'ldiradi, katta HUD |
-| **[VisionAssist Companion](COMPANION.md)** | **istalgan serverda** — matchmaking ham | o'z jonini/o'qini/taymerini katta qilib ko'rsatadi, ovozni ko'rinadigan qiladi |
+| **[VisionAssist Overlay](OVERLAY.md)** | **istalgan serverda** | haqiqiy dastur: o'yin ustida turadigan HUD, **Alt** bilan menyu, ovoz yo'nalishi |
+| **[VisionAssist Companion](COMPANION.md)** | **istalgan serverda** | o'sha ma'lumot brauzerda — ikkinchi monitor uchun qulay |
 
-Bir joyda ikkita loyiha bo'lishining sababi: server plugini o'yinchi ko'rgan
-*dunyoni* o'zgartira oladi, lekin faqat siz o'rnatgan serverda. Companion esa
-hamma joyda ishlaydi, lekin faqat *sizga tegishli* ma'lumotni ko'rsata oladi.
-Ikkalasida ham dushman joylashuvi yo'q.
+**Qaysi birini olish kerak?** O'yin ustida ko'rinadigan HUD kerak bo'lsa —
+**Overlay**. Ikkinchi monitorda ko'rmoqchi bo'lsangiz — **Companion**. Ikkalasi
+bir xil ma'lumot va bir xil portni ishlatadi, shuning uchun bir vaqtda bittasi
+ishlaydi.
+
+Bir joyda uchta loyiha bo'lishining sababi: server plugini o'yinchi ko'rgan
+*dunyoni* o'zgartira oladi, lekin faqat siz o'rnatgan serverda. Overlay va
+Companion hamma joyda ishlaydi, lekin faqat *sizga tegishli* ma'lumotni
+ko'rsata oladi. Uchalasida ham dushman joylashuvi yo'q.
 
 Yana ikki qo'llanma: FPS uchun **[PERFORMANCE.md](PERFORMANCE.md)**, serverni
 noldan o'rnatish uchun **[INSTALL.md](INSTALL.md)**.
@@ -98,7 +104,7 @@ SteamID bo'yicha saqlanadi.
 | 2D quti (box) va ism yozuvi | ❌ mijoz tomonida chiziladi, server chiza olmaydi |
 | Faqat boshni alohida bo'yash | ❌ model bir butun bo'yaladi |
 | Faqat bitta o'yinchiga ko'rinadigan effekt | ❌ ataylab yo'q |
-| Boshqa (siz admin bo'lmagan) serverlarda ishlash | ❌ — buning uchun **[Companion](COMPANION.md)** |
+| Boshqa (siz admin bo'lmagan) serverlarda ishlash | ❌ — buning uchun **[Overlay](OVERLAY.md)** |
 
 ---
 
@@ -119,12 +125,21 @@ SteamID bo'yicha saqlanadi.
 1. `VisionAssist.sln` faylini oching (ikki marta bosing).
 2. **Build > Build Solution** yoki **F6**.
 
-Yechimda ikkita loyiha bor va ular bir-biriga o'xshamaydi:
+Yechimda uchta loyiha bor va ular bir-biriga o'xshamaydi:
 
 | Loyiha | Turi | F5 |
 |---|---|---|
 | `VisionAssist` | server plugini (`.dll`) | ❌ ishlamaydi |
-| `VisionAssist.Companion` | mijoz dasturi (`.exe`) | ✅ ishlaydi |
+| `VisionAssist.Companion` | konsol dasturi (`.exe`) | ✅ ishlaydi |
+| `VisionAssist.Overlay` | Windows oynasi (`.exe`) | ✅ ishlaydi |
+
+> `VisionAssist.Overlay` WinForms ishlatadi, ya'ni **faqat Windows'da**
+> quriladi. Linux serverda faqat plugin kerak bo'lsa, butun yechimni emas,
+> shu loyihani quring:
+>
+> ```bash
+> dotnet build src/VisionAssist/VisionAssist.csproj -c Release
+> ```
 
 > ### ⚠️ Plugin loyihasida F5 bosmang
 >
@@ -374,6 +389,9 @@ src/VisionAssist/
     ├── VisionAssistPlugin.Commands.cs  Barcha buyruqlar
     └── VisionAssistPlugin.Menu.cs      !vision menyusi
 
-src/VisionAssist.Companion/   Mijoz dasturi — istalgan serverda ishlaydi
+src/VisionAssist.Companion/   Mijoz dasturi (brauzer) — istalgan serverda
                               To'liq tavsif: COMPANION.md
+
+src/VisionAssist.Overlay/     Mijoz dasturi (o'yin ustidagi oyna, Alt menyusi)
+                              To'liq tavsif: OVERLAY.md
 ```

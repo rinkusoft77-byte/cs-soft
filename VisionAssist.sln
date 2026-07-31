@@ -6,10 +6,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VisionAssist", "src\VisionA
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VisionAssist.Companion", "src\VisionAssist.Companion\VisionAssist.Companion.csproj", "{3C7E1D42-9B58-4E0A-9F3C-6D5A2B814E77}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VisionAssist.Overlay", "src\VisionAssist.Overlay\VisionAssist.Overlay.csproj", "{B41F7A96-2C3D-4E58-8A17-9D6E30C5B412}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{75136ABB-A478-45AA-BA98-B548D91E98AB}"
 	ProjectSection(SolutionItems) = preProject
 		README.md = README.md
 		INSTALL.md = INSTALL.md
+		COMPANION.md = COMPANION.md
+		OVERLAY.md = OVERLAY.md
+		PERFORMANCE.md = PERFORMANCE.md
 		.editorconfig = .editorconfig
 		Directory.Build.props = Directory.Build.props
 		Local.props.example = Local.props.example
@@ -29,6 +34,10 @@ Global
 		{3C7E1D42-9B58-4E0A-9F3C-6D5A2B814E77}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3C7E1D42-9B58-4E0A-9F3C-6D5A2B814E77}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3C7E1D42-9B58-4E0A-9F3C-6D5A2B814E77}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B41F7A96-2C3D-4E58-8A17-9D6E30C5B412}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B41F7A96-2C3D-4E58-8A17-9D6E30C5B412}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B41F7A96-2C3D-4E58-8A17-9D6E30C5B412}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B41F7A96-2C3D-4E58-8A17-9D6E30C5B412}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
