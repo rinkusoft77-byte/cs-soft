@@ -1,81 +1,134 @@
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Admin;
-using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Timers;
+using Microsoft.Extensions.Logging;
 
 namespace VisionAssist;
 
 /// <summary>
-/// Server-side visibility plugin for a CS2 server you own.
+/// Visibility and readability plugin for a CS2 server you run yourself.
 ///
-/// Everything here runs on the server and is networked to every connected
-/// client, so all players see the same thing. It cannot be used on servers you
-/// do not administer, and there is no per-viewer filtering anywhere in this
-/// plugin — the effects are a property of the server, not an advantage for one
-/// player.
+/// Everything is server-side and networked to every client, so all players see
+/// the same thing. Two deliberate limits: the outline has no see-through-walls
+/// mode, and nothing here is filtered per viewer - there is no way to make an
+/// effect visible to one player only.
 /// </summary>
 [MinimumApiVersion(305)]
-public class VisionAssistPlugin : BasePlugin, IPluginConfig<VisionAssistConfig>
+public partial class VisionAssistPlugin : BasePlugin, IPluginConfig<VisionAssistConfig>
 {
     public override string ModuleName => "VisionAssist";
-    public override string ModuleVersion => "1.0.0";
+    public override string ModuleVersion => "2.0.0";
     public override string ModuleAuthor => "rinkusoft77-byte";
     public override string ModuleDescription =>
-        "High-contrast player outlines, model tint and full-team radar for a self-hosted CS2 server.";
+        "Model recolouring, outlines, objective highlights, a large HUD and full radar for a self-hosted CS2 server.";
 
     public VisionAssistConfig Config { get; set; } = new();
 
-    private GlowController _glow = null!;
+    private PlayerPreferenceStore _prefs = null!;
+    private TintController _tint = null!;
+    private OutlineController _outline = null!;
     private RadarController _radar = null!;
-    private CounterStrikeSharp.API.Modules.Timers.Timer? _radarTimer;
+    private HighlightController _highlight = null!;
+    private HudController _hud = null!;
+
+    private readonly List<CounterStrikeSharp.API.Modules.Timers.Timer> _timers = new();
 
     public void OnConfigParsed(VisionAssistConfig config)
     {
-        // Guard against values that would make the server do pointless work.
+        // Keep the timers out of pathological territory.
         config.RadarUpdateInterval = Math.Clamp(config.RadarUpdateInterval, 0.1f, 5.0f);
+        config.HudUpdateInterval = Math.Clamp(config.HudUpdateInterval, 0.1f, 2.0f);
+        config.HighlightInterval = Math.Clamp(config.HighlightInterval, 0.25f, 10.0f);
         config.TintAlpha = Math.Clamp(config.TintAlpha, 1, 255);
+        config.HudLowHealthThreshold = Math.Clamp(config.HudLowHealthThreshold, 0, 100);
+
+        if (!Lang.IsSupported(config.DefaultLanguage)) config.DefaultLanguage = "en";
 
         Config = config;
+
+        ApplyConfiguredTheme();
+    }
+
+    /// <summary>
+    /// DefaultTheme drives the colours unless it is "custom". Setting a colour
+    /// by hand switches it to "custom" so the individual values are respected.
+    /// </summary>
+    private void ApplyConfiguredTheme()
+    {
+        var theme = Theme.Find(Config.DefaultTheme);
+        if (theme is null) return;
+
+        Config.TintColorT = theme.ColorT;
+        Config.TintColorCT = theme.ColorCT;
+        Config.OutlineColorT = theme.ColorT;
+        Config.OutlineColorCT = theme.ColorCT;
     }
 
     public override void Load(bool hotReload)
     {
-        _glow = new GlowController(this);
+        _prefs = new PlayerPreferenceStore(ModuleDirectory, Config,
+            (message, ex) => Logger.LogError(ex, "{Message}", message));
+        _prefs.Load();
+
+        _tint = new TintController(this);
+        _outline = new OutlineController(this);
         _radar = new RadarController(this);
+        _highlight = new HighlightController(this);
+        _hud = new HudController(this, _prefs);
 
-        RegisterListener<Listeners.OnClientDisconnect>(slot => _glow.Clear(slot));
-        RegisterListener<Listeners.OnMapStart>(_ => _glow.ForgetAll());
-
-        StartRadarTimer();
-
-        if (hotReload)
+        RegisterListener<Listeners.OnClientDisconnect>(slot =>
         {
-            _glow.ApplyToAll();
-        }
+            _outline.Clear(slot);
+            _prefs.Flush();
+        });
+
+        RegisterListener<Listeners.OnMapStart>(_ => _outline.ForgetAll());
+
+        StartTimers();
+
+        if (hotReload) RefreshAllPlayers();
 
         Logger.LogInformation(
-            "VisionAssist loaded. Glow: {Glow}, tint: {Tint}, radar: {Radar}.",
-            Config.GlowEnabled, Config.TintEnabled, Config.RadarEnabled);
+            "VisionAssist {Version} loaded (tint: {Tint}, outline: {Outline}, radar: {Radar}, HUD: {Hud}).",
+            ModuleVersion, Config.TintEnabled, Config.OutlineEnabled, Config.RadarEnabled, Config.HudEnabled);
     }
 
     public override void Unload(bool hotReload)
     {
-        _radarTimer?.Kill();
-        _radarTimer = null;
+        StopTimers();
 
-        _glow.ClearAll();
+        _outline.ClearAll();
+        _tint.ResetAll();
+        _highlight.ResetAll();
         _radar.Reset();
+        _prefs.Flush();
     }
 
-    private void StartRadarTimer()
+    private void StartTimers()
     {
-        _radarTimer?.Kill();
-        _radarTimer = AddTimer(Config.RadarUpdateInterval, () => _radar.Tick(), TimerFlags.REPEAT);
+        StopTimers();
+
+        _timers.Add(AddTimer(Config.RadarUpdateInterval, () => _radar.Tick(), TimerFlags.REPEAT));
+        _timers.Add(AddTimer(Config.HudUpdateInterval, () => _hud.Tick(), TimerFlags.REPEAT));
+        _timers.Add(AddTimer(Config.HighlightInterval, () => _highlight.Tick(), TimerFlags.REPEAT));
+        _timers.Add(AddTimer(60.0f, () => _prefs.Flush(), TimerFlags.REPEAT));
+    }
+
+    private void StopTimers()
+    {
+        foreach (var timer in _timers) timer.Kill();
+        _timers.Clear();
+    }
+
+    /// <summary>Reapplies model colour and outline to everyone currently in the server.</summary>
+    private void RefreshAllPlayers()
+    {
+        _tint.ApplyToAll();
+        _outline.ApplyToAll();
     }
 
     // ---------------------------------------------------------------- events
@@ -86,11 +139,14 @@ public class VisionAssistPlugin : BasePlugin, IPluginConfig<VisionAssistConfig>
         var player = @event.Userid;
         if (player is null || !player.IsValid) return HookResult.Continue;
 
-        // The pawn's model is not assigned yet on the spawn tick, and the glow
-        // props are clones of that model, so wait a beat before building them.
+        // The pawn's model is not assigned yet on the spawn tick, and the
+        // outline props are clones of that model, so wait a beat.
         AddTimer(0.2f, () =>
         {
-            if (player.IsValid) _glow.Apply(player);
+            if (!player.IsValid) return;
+
+            _tint.Apply(player);
+            _outline.Apply(player);
         });
 
         return HookResult.Continue;
@@ -100,7 +156,18 @@ public class VisionAssistPlugin : BasePlugin, IPluginConfig<VisionAssistConfig>
     public HookResult OnPlayerDeath(EventPlayerDeath @event, GameEventInfo info)
     {
         var player = @event.Userid;
-        if (player is not null && player.IsValid) _glow.Clear(player.Slot);
+        if (player is not null && player.IsValid) _outline.Clear(player.Slot);
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnPlayerHurt(EventPlayerHurt @event, GameEventInfo info)
+    {
+        if (!Config.TintFollowsHealth) return HookResult.Continue;
+
+        var player = @event.Userid;
+        if (player is not null && player.IsValid && player.PawnIsAlive) _tint.Apply(player);
 
         return HookResult.Continue;
     }
@@ -114,7 +181,10 @@ public class VisionAssistPlugin : BasePlugin, IPluginConfig<VisionAssistConfig>
         // Team decides the colour, so rebuild once the switch has settled.
         AddTimer(0.3f, () =>
         {
-            if (player.IsValid) _glow.Apply(player);
+            if (!player.IsValid) return;
+
+            _tint.Apply(player);
+            _outline.Apply(player);
         });
 
         return HookResult.Continue;
@@ -125,7 +195,7 @@ public class VisionAssistPlugin : BasePlugin, IPluginConfig<VisionAssistConfig>
     {
         // Round restart wipes non-preserved entities, our props included. Drop
         // the stale indices rather than killing whatever now occupies them.
-        _glow.ForgetAll();
+        _outline.ForgetAll();
 
         return HookResult.Continue;
     }
@@ -138,218 +208,34 @@ public class VisionAssistPlugin : BasePlugin, IPluginConfig<VisionAssistConfig>
         var player = @event.Userid;
         if (player is null || !player.IsValid || player.IsBot) return HookResult.Continue;
 
-        AddTimer(3.0f, () =>
+        AddTimer(4.0f, () =>
         {
-            if (!player.IsValid) return;
-
-            Chat.Reply(player, Config.ChatPrefix,
-                "{lime}This server runs enhanced visibility{default}: player outlines and full radar are on for {lime}everyone{default}.");
+            if (player.IsValid) Reply(player, T(player, "announce"));
         });
 
         return HookResult.Continue;
     }
 
-    // -------------------------------------------------------------- commands
-
-    [ConsoleCommand("css_vision", "Shows the current VisionAssist settings")]
-    public void OnVisionCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        if (!HasAccess(player)) return;
-
-        Reply(player, "{gold}VisionAssist{default} status:");
-        Reply(player, $"  Glow: {OnOff(Config.GlowEnabled)}  (through walls: {OnOff(Config.GlowThroughWalls)}, range: {Config.GlowRange})");
-        Reply(player, $"  Glow colours - T: {Config.GlowColorT}, CT: {Config.GlowColorCT}");
-        Reply(player, $"  Tint: {OnOff(Config.TintEnabled)}  (alpha: {Config.TintAlpha})");
-        Reply(player, $"  Tint colours - T: {Config.TintColorT}, CT: {Config.TintColorCT}");
-        Reply(player, $"  Radar: {OnOff(Config.RadarEnabled)}  (every {Config.RadarUpdateInterval:0.00}s, dead shown: {OnOff(Config.RadarIncludeDead)})");
-        Reply(player, "  Commands: {lime}!glow !glowcolor !tint !tintcolor !glowrange !walls !radar !colors{default}");
-    }
-
-    [ConsoleCommand("css_glow", "Turns the player outline on or off")]
-    [CommandHelper(minArgs: 1, usage: "<on|off>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
-    public void OnGlowCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        if (!HasAccess(player)) return;
-        if (!TryParseToggle(player, command.GetArg(1), out var enabled)) return;
-
-        Config.GlowEnabled = enabled;
-        SaveConfig();
-
-        if (enabled) _glow.ApplyToAll();
-        else foreach (var target in Utilities.GetPlayers()) _glow.Clear(target.Slot);
-
-        Broadcast($"Outline {OnOff(enabled)}.");
-    }
-
-    [ConsoleCommand("css_glowcolor", "Sets the outline colour")]
-    [CommandHelper(minArgs: 2, usage: "<t|ct|all> <colour>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
-    public void OnGlowColorCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        if (!HasAccess(player)) return;
-
-        var team = command.GetArg(1).ToLowerInvariant();
-        var input = command.GetArg(2);
-
-        if (!ColorParser.TryParse(input, out var color))
-        {
-            Reply(player, $"{{red}}Unknown colour{{default}} '{input}'. Use #RRGGBB, r,g,b or: {ColorParser.NamesList()}");
-            return;
-        }
-
-        var hex = ColorParser.ToHex(color.Value);
-
-        switch (team)
-        {
-            case "t":
-                Config.GlowColorT = hex;
-                break;
-            case "ct":
-                Config.GlowColorCT = hex;
-                break;
-            case "all":
-            case "both":
-                Config.GlowColorT = hex;
-                Config.GlowColorCT = hex;
-                break;
-            default:
-                Reply(player, "{red}Team must be{default} t, ct or all.");
-                return;
-        }
-
-        SaveConfig();
-        _glow.RefreshColors();
-
-        Broadcast($"Outline colour for {{lime}}{team.ToUpperInvariant()}{{default}} set to {{lime}}{hex}{{default}}.");
-    }
-
-    [ConsoleCommand("css_tint", "Turns the model recolour on or off")]
-    [CommandHelper(minArgs: 1, usage: "<on|off>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
-    public void OnTintCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        if (!HasAccess(player)) return;
-        if (!TryParseToggle(player, command.GetArg(1), out var enabled)) return;
-
-        Config.TintEnabled = enabled;
-        SaveConfig();
-        _glow.ApplyToAll();
-
-        Broadcast($"Model colour {OnOff(enabled)}.");
-    }
-
-    [ConsoleCommand("css_tintcolor", "Sets the model colour")]
-    [CommandHelper(minArgs: 2, usage: "<t|ct|all> <colour>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
-    public void OnTintColorCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        if (!HasAccess(player)) return;
-
-        var team = command.GetArg(1).ToLowerInvariant();
-        var input = command.GetArg(2);
-
-        if (!ColorParser.TryParse(input, out var color))
-        {
-            Reply(player, $"{{red}}Unknown colour{{default}} '{input}'. Use #RRGGBB, r,g,b or: {ColorParser.NamesList()}");
-            return;
-        }
-
-        var hex = ColorParser.ToHex(color.Value);
-
-        switch (team)
-        {
-            case "t":
-                Config.TintColorT = hex;
-                break;
-            case "ct":
-                Config.TintColorCT = hex;
-                break;
-            case "all":
-            case "both":
-                Config.TintColorT = hex;
-                Config.TintColorCT = hex;
-                break;
-            default:
-                Reply(player, "{red}Team must be{default} t, ct or all.");
-                return;
-        }
-
-        SaveConfig();
-        _glow.RefreshColors();
-
-        Broadcast($"Model colour for {{lime}}{team.ToUpperInvariant()}{{default}} set to {{lime}}{hex}{{default}}.");
-    }
-
-    [ConsoleCommand("css_glowrange", "Sets how far away the outline still draws")]
-    [CommandHelper(minArgs: 1, usage: "<units, e.g. 5000>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
-    public void OnGlowRangeCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        if (!HasAccess(player)) return;
-
-        if (!int.TryParse(command.GetArg(1), out var range) || range < 0)
-        {
-            Reply(player, "{red}Range must be a positive number{default}, e.g. 5000.");
-            return;
-        }
-
-        Config.GlowRange = range;
-        SaveConfig();
-        _glow.RefreshColors();
-
-        Reply(player, $"Outline range set to {{lime}}{range}{{default}}.");
-    }
-
-    [ConsoleCommand("css_walls", "Whether the outline draws through geometry")]
-    [CommandHelper(minArgs: 1, usage: "<on|off>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
-    public void OnWallsCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        if (!HasAccess(player)) return;
-        if (!TryParseToggle(player, command.GetArg(1), out var enabled)) return;
-
-        Config.GlowThroughWalls = enabled;
-        SaveConfig();
-        _glow.ApplyToAll();
-
-        Broadcast($"Outline through walls {OnOff(enabled)}.");
-    }
-
-    [ConsoleCommand("css_radar", "Turns the all-players radar on or off")]
-    [CommandHelper(minArgs: 1, usage: "<on|off>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
-    public void OnRadarCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        if (!HasAccess(player)) return;
-        if (!TryParseToggle(player, command.GetArg(1), out var enabled)) return;
-
-        Config.RadarEnabled = enabled;
-        SaveConfig();
-
-        if (!enabled) _radar.Reset();
-
-        Broadcast($"Full radar {OnOff(enabled)}.");
-    }
-
-    [ConsoleCommand("css_colors", "Lists the built-in colour names")]
-    public void OnColorsCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        Reply(player, $"Colours: {{lime}}{ColorParser.NamesList()}{{default}}");
-        Reply(player, "Or use a hex value like {lime}#FF2ED1{default} / an RGB triplet like {lime}255,46,209{default}.");
-    }
-
-    [ConsoleCommand("css_vision_reload", "Reloads VisionAssist.json from disk")]
-    public void OnReloadCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        if (!HasAccess(player)) return;
-
-        if (!TryLoadConfigFromDisk(out var error))
-        {
-            Reply(player, $"{{red}}Reload failed{{default}}: {error}");
-            return;
-        }
-
-        StartRadarTimer();
-        _glow.ApplyToAll();
-
-        Reply(player, "Config reloaded.");
-    }
-
     // --------------------------------------------------------------- helpers
+
+    private string T(CCSPlayerController? player, string key, params object[] args)
+        => Lang.Get(_prefs.LanguageOf(player), key, args);
+
+    private void Reply(CCSPlayerController? player, string message)
+        => Chat.Reply(player, Config.ChatPrefix, message);
+
+    private void Broadcast(string key, params object[] args)
+    {
+        // Broadcasts go out per player so each one reads it in their language.
+        foreach (var player in Utilities.GetPlayers())
+        {
+            if (!player.IsValid || player.IsBot || player.IsHLTV) continue;
+
+            Chat.Reply(player, Config.ChatPrefix, Lang.Get(_prefs.LanguageOf(player), key, args));
+        }
+
+        Server.PrintToConsole($"[VisionAssist] {Lang.Get("en", key, args)}");
+    }
 
     private bool HasAccess(CCSPlayerController? player)
     {
@@ -357,47 +243,19 @@ public class VisionAssistPlugin : BasePlugin, IPluginConfig<VisionAssistConfig>
         if (player is null || !player.IsValid) return true;
         if (AdminManager.PlayerHasPermissions(player, Config.AdminFlag)) return true;
 
-        Reply(player, "{red}You do not have access to this command.{default}");
+        Reply(player, T(player, "no_access"));
         return false;
     }
 
-    private bool TryParseToggle(CCSPlayerController? player, string value, out bool enabled)
-    {
-        switch (value.Trim().ToLowerInvariant())
-        {
-            case "1":
-            case "on":
-            case "true":
-            case "yes":
-                enabled = true;
-                return true;
-            case "0":
-            case "off":
-            case "false":
-            case "no":
-                enabled = false;
-                return true;
-            default:
-                Reply(player, $"{{red}}Expected on or off{{default}}, got '{value}'.");
-                enabled = false;
-                return false;
-        }
-    }
-
-    private void Reply(CCSPlayerController? player, string message)
-        => Chat.Reply(player, Config.ChatPrefix, message);
-
-    private void Broadcast(string message)
-        => Chat.Broadcast(Config.ChatPrefix, message);
-
-    private static string OnOff(bool value) => value ? "{lime}on{default}" : "{red}off{default}";
+    private string OnOffText(CCSPlayerController? player, bool value)
+        => value ? $"{{lime}}{T(player, "on")}{{default}}" : $"{{red}}{T(player, "off")}{{default}}";
 
     private string ConfigPath => Path.GetFullPath(Path.Combine(
         ModuleDirectory, "..", "..", "configs", "plugins", ModuleName, $"{ModuleName}.json"));
 
     /// <summary>
     /// Persists live command changes so they survive a map change or restart.
-    /// Failures are logged rather than thrown — a read-only config file should
+    /// Failures are logged rather than thrown - a read-only config file should
     /// not take the plugin down mid-round.
     /// </summary>
     private void SaveConfig()

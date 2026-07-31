@@ -75,4 +75,15 @@ public static class ColorParser
     public static string ToHex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
 
     public static string NamesList() => string.Join(", ", NamedColors.Keys);
+
+    /// <summary>Linear mix of two colours. <paramref name="amount"/> 0 = from, 1 = to.</summary>
+    public static Color Blend(Color from, Color to, float amount)
+    {
+        amount = Math.Clamp(amount, 0f, 1f);
+
+        return Color.FromArgb(
+            (int)(from.R + (to.R - from.R) * amount),
+            (int)(from.G + (to.G - from.G) * amount),
+            (int)(from.B + (to.B - from.B) * amount));
+    }
 }
