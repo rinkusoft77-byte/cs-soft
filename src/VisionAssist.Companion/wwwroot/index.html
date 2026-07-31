@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="uz" data-theme="highcontrast" data-size="l" data-team="none">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>VisionAssist Overlay</title>
+    <link rel="stylesheet" href="overlay.css">
+</head>
+<body>
+
+<header id="topbar">
+    <span id="connection" class="pill pill-off" data-i18n="waiting">kutilmoqda</span>
+    <span id="map-name" class="topbar-item"></span>
+    <span id="score" class="topbar-item">
+        <b id="score-ct">0</b><span class="score-sep">:</span><b id="score-t">0</b>
+    </span>
+    <span id="round-number" class="topbar-item"></span>
+    <span class="topbar-spacer"></span>
+    <span id="player-name" class="topbar-item"></span>
+    <button id="settings-toggle" type="button" aria-expanded="false" title="Sozlamalar">&#9881;</button>
+</header>
+
+<!-- Full-width warnings: things that need to be seen without looking for them. -->
+<section id="alerts" aria-live="polite"></section>
+
+<main>
+    <section id="vitals">
+        <div class="card" id="card-health">
+            <span class="card-label" data-i18n="health">JON</span>
+            <span class="card-value" id="value-health">&ndash;</span>
+        </div>
+
+        <div class="card" id="card-armor">
+            <span class="card-label" data-i18n="armor">ZIRH</span>
+            <span class="card-value" id="value-armor">&ndash;</span>
+            <span class="card-note" id="note-helmet"></span>
+        </div>
+
+        <div class="card" id="card-ammo">
+            <span class="card-label" id="label-weapon" data-i18n="weapon">QUROL</span>
+            <span class="card-value" id="value-ammo">&ndash;</span>
+            <span class="card-note" id="note-reserve"></span>
+        </div>
+
+        <div class="card" id="card-timer">
+            <span class="card-label" id="label-timer" data-i18n="round">RAUND</span>
+            <span class="card-value" id="value-timer">&ndash;</span>
+        </div>
+    </section>
+
+    <section id="extras">
+        <div class="chip" id="chip-money"><span class="chip-label" data-i18n="money">PUL</span><b id="value-money">&ndash;</b></div>
+        <div class="chip" id="chip-kills"><span class="chip-label" data-i18n="score">HISOB</span><b id="value-kills">&ndash;</b></div>
+        <div class="chip" id="chip-utility"><span class="chip-label" data-i18n="utility">GRANATA</span><b id="value-utility">&ndash;</b></div>
+        <div class="chip hidden" id="chip-kit" data-i18n="defusekit">KIT</div>
+        <div class="chip hidden" id="chip-bombcarry" data-i18n="hasbomb">BOMBA SIZDA</div>
+    </section>
+
+    <!--
+      Sound direction. This reads the game audio your speakers are already
+      playing and shows where it sits in the stereo field. It cannot know
+      anything the sound did not already tell you - in particular, front and
+      back are indistinguishable in a stereo signal.
+    -->
+    <section id="sound" class="panel">
+        <div class="panel-head">
+            <h2 data-i18n="soundTitle">Ovoz yo'nalishi</h2>
+            <button id="sound-toggle" type="button" class="button" data-i18n="soundStart">Yoqish</button>
+        </div>
+
+        <canvas id="sound-canvas" width="900" height="150"
+                aria-label="Ovoz yo'nalishi ko'rsatkichi"></canvas>
+
+        <p id="sound-status" class="panel-note" data-i18n="soundIdle">
+            O'chirilgan. Yoqilganda tizim ovozini eshitib, chap/o'ng yo'nalishini ko'rsatadi.
+        </p>
+    </section>
+</main>
+
+<aside id="settings" hidden>
+    <h2 data-i18n="settings">Sozlamalar</h2>
+
+    <label class="field">
+        <span data-i18n="language">Til</span>
+        <select id="select-language">
+            <option value="uz">O'zbekcha</option>
+            <option value="ru">Русский</option>
+            <option value="en">English</option>
+        </select>
+    </label>
+
+    <label class="field">
+        <span data-i18n="theme">Rang to'plami</span>
+        <select id="select-theme">
+            <option value="highcontrast">highcontrast &mdash; sariq / moviy</option>
+            <option value="neon">neon &mdash; pushti / yashil</option>
+            <option value="deuteranopia">deuteranopia &mdash; to'q sariq / ko'k</option>
+            <option value="protanopia">protanopia &mdash; qahrabo / osmoniy</option>
+            <option value="tritanopia">tritanopia &mdash; qizil / firuza</option>
+            <option value="soft">soft &mdash; pastel</option>
+            <option value="mono">mono &mdash; oq / qora</option>
+        </select>
+    </label>
+
+    <label class="field">
+        <span data-i18n="size">O'lcham</span>
+        <select id="select-size">
+            <option value="s">S</option>
+            <option value="m">M</option>
+            <option value="l">L</option>
+            <option value="xl">XL</option>
+        </select>
+    </label>
+
+    <label class="field field-inline">
+        <input type="checkbox" id="check-transparent">
+        <span data-i18n="transparent">Shaffof fon (o'yin ustiga qo'yish uchun)</span>
+    </label>
+
+    <hr>
+
+    <label class="field">
+        <span data-i18n="soundSource">Ovoz manbasi</span>
+        <select id="select-sound-source">
+            <option value="display" data-i18n="sourceDisplay">Ekran ulashish (tizim ovozi)</option>
+            <option value="device" data-i18n="sourceDevice">Kirish qurilmasi (Stereo Mix)</option>
+        </select>
+    </label>
+
+    <label class="field hidden" id="field-sound-device">
+        <span data-i18n="soundDevice">Qurilma</span>
+        <select id="select-sound-device"></select>
+    </label>
+
+    <label class="field">
+        <span data-i18n="sensitivity">Sezgirlik</span>
+        <input type="range" id="range-sensitivity" min="0" max="1" step="0.05" value="0.5">
+    </label>
+
+    <p class="panel-note" data-i18n="soundHelp">
+        Chap/o'ng aniqlanadi. Old va orqa farqi stereo signalda yo'q &mdash; buni
+        hech qanday dastur ovozdan chiqarib bera olmaydi.
+    </p>
+
+    <hr>
+
+    <p class="panel-note" id="settings-about"></p>
+</aside>
+
+<script src="sound.js"></script>
+<script src="overlay.js"></script>
+
+</body>
+</html>

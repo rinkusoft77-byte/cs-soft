@@ -4,6 +4,8 @@ VisualStudioVersion = 18.0.10000.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VisionAssist", "src\VisionAssist\VisionAssist.csproj", "{FE92D588-9388-4B26-969B-438D2E0A1F7C}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VisionAssist.Companion", "src\VisionAssist.Companion\VisionAssist.Companion.csproj", "{3C7E1D42-9B58-4E0A-9F3C-6D5A2B814E77}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{75136ABB-A478-45AA-BA98-B548D91E98AB}"
 	ProjectSection(SolutionItems) = preProject
 		README.md = README.md
@@ -23,6 +25,10 @@ Global
 		{FE92D588-9388-4B26-969B-438D2E0A1F7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FE92D588-9388-4B26-969B-438D2E0A1F7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FE92D588-9388-4B26-969B-438D2E0A1F7C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C7E1D42-9B58-4E0A-9F3C-6D5A2B814E77}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C7E1D42-9B58-4E0A-9F3C-6D5A2B814E77}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C7E1D42-9B58-4E0A-9F3C-6D5A2B814E77}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C7E1D42-9B58-4E0A-9F3C-6D5A2B814E77}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

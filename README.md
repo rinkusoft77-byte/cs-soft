@@ -1,4 +1,20 @@
-# VisionAssist — CS2 server plugini
+# VisionAssist — CS2 uchun ko'rinuvchanlik to'plami
+
+Ikkita mustaqil qism:
+
+| Loyiha | Qayerda ishlaydi | Nima qiladi |
+|---|---|---|
+| **VisionAssist** (bu README) | faqat **o'zingiz admin bo'lgan serverda** | modellarni bo'yaydi, kontur chizadi, radarni to'ldiradi, katta HUD |
+| **[VisionAssist Companion](COMPANION.md)** | **istalgan serverda** — matchmaking ham | o'z jonini/o'qini/taymerini katta qilib ko'rsatadi, ovozni ko'rinadigan qiladi |
+
+Bir joyda ikkita loyiha bo'lishining sababi: server plugini o'yinchi ko'rgan
+*dunyoni* o'zgartira oladi, lekin faqat siz o'rnatgan serverda. Companion esa
+hamma joyda ishlaydi, lekin faqat *sizga tegishli* ma'lumotni ko'rsata oladi.
+Ikkalasida ham dushman joylashuvi yo'q.
+
+---
+
+## VisionAssist — server plugini
 
 O'zingiz admin bo'lgan CS2 serveri uchun **ko'rinuvchanlik va qulaylik** plugini.
 Ko'zi yaxshi ko'rmaydigan o'yinchi uchun yozilgan: modellarni ajratib turadigan
@@ -79,6 +95,7 @@ SteamID bo'yicha saqlanadi.
 | 2D quti (box) va ism yozuvi | ❌ mijoz tomonida chiziladi, server chiza olmaydi |
 | Faqat boshni alohida bo'yash | ❌ model bir butun bo'yaladi |
 | Faqat bitta o'yinchiga ko'rinadigan effekt | ❌ ataylab yo'q |
+| Boshqa (siz admin bo'lmagan) serverlarda ishlash | ❌ — buning uchun **[Companion](COMPANION.md)** |
 
 ---
 
@@ -99,23 +116,34 @@ SteamID bo'yicha saqlanadi.
 1. `VisionAssist.sln` faylini oching (ikki marta bosing).
 2. **Build > Build Solution** yoki **F6**.
 
-> ### ⚠️ F5 bosmang
+Yechimda ikkita loyiha bor va ular bir-biriga o'xshamaydi:
+
+| Loyiha | Turi | F5 |
+|---|---|---|
+| `VisionAssist` | server plugini (`.dll`) | ❌ ishlamaydi |
+| `VisionAssist.Companion` | mijoz dasturi (`.exe`) | ✅ ishlaydi |
+
+> ### ⚠️ Plugin loyihasida F5 bosmang
 >
-> F5 bosilsa Visual Studio shunday deydi:
+> `VisionAssist` startup loyiha bo'lganda F5 bosilsa Visual Studio shunday deydi:
 > *"Проект, библиотека классов которого имеет тип «Тип выходных данных»,
 > нельзя запустить напрямую"* (ingliz tilida: *"A project with an Output Type of
 > Class Library cannot be started directly"*).
 >
 > **Bu xato emas.** CounterStrikeSharp plugini — `.dll` fayl (class library),
 > uni mustaqil ishga tushirib bo'lmaydi: uni CS2 serveri yuklaydi. Shuning
-> uchun bu loyihada F5 va Ctrl+F5 hech qachon ishlamaydi.
+> uchun plugin loyihasida F5 va Ctrl+F5 hech qachon ishlamaydi.
 >
-> | Tugma | Bu loyihada |
+> | Tugma | Plugin loyihasida |
 > |---|---|
 > | F5 / Ctrl+F5 (Start) | ❌ ishlamaydi |
 > | **F6 / Ctrl+Shift+B (Build)** | ✅ **shu kerak** |
 >
 > Output oynasida `Build succeeded` chiqsa — hammasi joyida, DLL tayyor.
+>
+> `VisionAssist.Companion` esa oddiy konsol dasturi. Uni F5 bilan ishga
+> tushirish uchun Solution Explorer'da ustiga o'ng tugma → **Set as Startup
+> Project**.
 
 Boshqa hech narsa sozlash shart emas — NuGet paketi avtomatik yuklanadi,
 `.NET 8` maqsad platformasi `Directory.Build.props` da yozilgan. Visual
@@ -342,4 +370,7 @@ src/VisionAssist/
 └── Commands/
     ├── VisionAssistPlugin.Commands.cs  Barcha buyruqlar
     └── VisionAssistPlugin.Menu.cs      !vision menyusi
+
+src/VisionAssist.Companion/   Mijoz dasturi — istalgan serverda ishlaydi
+                              To'liq tavsif: COMPANION.md
 ```

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Framework, language version and nullability come from Directory.Build.props
+    in the repository root.
+
+    Unlike src/VisionAssist (a class library the server loads), this project is
+    an ordinary console application, so F5 in Visual Studio runs it.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>VisionAssist.Companion</AssemblyName>
+    <RootNamespace>VisionAssist.Companion</RootNamespace>
+    <Version>1.0.0</Version>
+    <Product>VisionAssist Companion</Product>
+    <Description>Local accessibility overlay for CS2, fed by Valve's Game State Integration.</Description>
+  </PropertyGroup>
+
+  <!--
+    The overlay page and the .cfg templates are read from disk at runtime, next
+    to the executable, so they can be edited without a rebuild.
+
+    Update rather than Include: the SDK's default globs already pick these files
+    up as None items, and adding them a second time would list them twice in
+    Solution Explorer.
+  -->
+  <ItemGroup>
+    <None Update="wwwroot/**/*" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="cfg/**/*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

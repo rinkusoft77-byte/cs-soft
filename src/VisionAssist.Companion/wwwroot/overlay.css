@@ -1,0 +1,363 @@
+/*
+  VisionAssist overlay.
+
+  Two knobs drive the whole sheet: data-theme on <html> picks the team colours
+  (the same seven presets the server plugin ships) and data-size picks one base
+  unit that every size is derived from. Nothing here uses a hard-coded px font
+  size, so S..XL scales the layout instead of just the text.
+*/
+
+/* --------------------------------------------------------------- the presets */
+
+:root[data-theme="highcontrast"] { --team-t: #FFEB3C; --team-ct: #00D9FF; }
+:root[data-theme="neon"]         { --team-t: #FF2ED1; --team-ct: #39FF14; }
+:root[data-theme="deuteranopia"] { --team-t: #FF8C00; --team-ct: #0072B2; }
+:root[data-theme="protanopia"]   { --team-t: #E69F00; --team-ct: #56B4E9; }
+:root[data-theme="tritanopia"]   { --team-t: #FF4B4B; --team-ct: #00C2A0; }
+:root[data-theme="soft"]         { --team-t: #FFB3C7; --team-ct: #A8D8FF; }
+:root[data-theme="mono"]         { --team-t: #FFFFFF; --team-ct: #9E9E9E; }
+
+:root {
+    --bg: #07090c;
+    --panel: #12161c;
+    --panel-edge: #262e39;
+    --fg: #f2f5f8;
+    --muted: #8a97a6;
+    --danger: #FF3B30;
+    --warn: #FFB020;
+    --ok: #2FD16B;
+
+    /* Overridden per snapshot: whichever team the player is on. */
+    --accent: var(--team-ct);
+
+    --u: 22px;
+    --radius: calc(var(--u) * 0.45);
+    --gap: calc(var(--u) * 0.6);
+}
+
+:root[data-size="s"]  { --u: 14px; }
+:root[data-size="m"]  { --u: 18px; }
+:root[data-size="l"]  { --u: 22px; }
+:root[data-size="xl"] { --u: 30px; }
+
+:root[data-team="t"]  { --accent: var(--team-t); }
+:root[data-team="ct"] { --accent: var(--team-ct); }
+
+/* ------------------------------------------------------------------- shell */
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: var(--gap);
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+    font-size: var(--u);
+    line-height: 1.25;
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+    min-height: 100vh;
+}
+
+/* For stacking the window on top of a borderless-windowed game. */
+:root[data-transparent="true"] body { background: transparent; }
+:root[data-transparent="true"] .card,
+:root[data-transparent="true"] .panel,
+:root[data-transparent="true"] #topbar,
+:root[data-transparent="true"] .chip { background: rgba(7, 9, 12, 0.62); }
+
+.hidden { display: none !important; }
+
+/* ------------------------------------------------------------------ topbar */
+
+#topbar {
+    display: flex;
+    align-items: center;
+    gap: var(--gap);
+    flex-wrap: wrap;
+    padding: calc(var(--u) * 0.35) calc(var(--u) * 0.6);
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: var(--radius);
+    font-size: calc(var(--u) * 0.8);
+}
+
+.topbar-item { color: var(--muted); }
+.topbar-spacer { flex: 1 1 auto; }
+
+#map-name { color: var(--fg); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+
+#score { font-size: calc(var(--u) * 1.1); color: var(--fg); }
+#score-ct { color: var(--team-ct); }
+#score-t { color: var(--team-t); }
+.score-sep { color: var(--muted); margin: 0 0.35em; }
+
+.pill {
+    padding: 0.15em 0.7em;
+    border-radius: 999px;
+    font-size: calc(var(--u) * 0.7);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+}
+
+.pill-on  { background: var(--ok); color: #04120a; }
+.pill-off { background: #39404a; color: var(--muted); }
+.pill-warn { background: var(--warn); color: #1a1200; }
+
+#settings-toggle {
+    background: none;
+    border: 1px solid var(--panel-edge);
+    color: var(--muted);
+    border-radius: var(--radius);
+    font-size: calc(var(--u) * 0.95);
+    line-height: 1;
+    padding: 0.25em 0.5em;
+    cursor: pointer;
+}
+
+#settings-toggle:hover { color: var(--fg); border-color: var(--accent); }
+
+/* ------------------------------------------------------------------ alerts */
+
+#alerts {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--gap) * 0.5);
+}
+
+#alerts:empty { display: none; }
+
+.alert {
+    padding: calc(var(--u) * 0.4) calc(var(--u) * 0.7);
+    border-radius: var(--radius);
+    font-size: calc(var(--u) * 1.5);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.alert-bomb   { background: var(--danger); color: #fff; animation: pulse 0.9s ease-in-out infinite; }
+.alert-burn   { background: #FF6A00; color: #1a0a00; }
+.alert-flash  { background: #ffffff; color: #101010; }
+.alert-smoke  { background: #5c6672; color: #f2f5f8; }
+.alert-defuse { background: var(--ok); color: #04120a; }
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .alert-bomb { animation: none; }
+}
+
+/* ------------------------------------------------------------------ vitals */
+
+main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+    flex: 1 1 auto;
+}
+
+#vitals {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(calc(var(--u) * 7), 1fr));
+    gap: var(--gap);
+}
+
+.card {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-left: calc(var(--u) * 0.25) solid var(--accent);
+    border-radius: var(--radius);
+    padding: calc(var(--u) * 0.5) calc(var(--u) * 0.7) calc(var(--u) * 0.6);
+    display: flex;
+    flex-direction: column;
+    gap: 0.1em;
+    min-width: 0;
+}
+
+.card-label {
+    font-size: calc(var(--u) * 0.7);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-value {
+    font-size: calc(var(--u) * 2.6);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    letter-spacing: -0.01em;
+}
+
+.card-note {
+    font-size: calc(var(--u) * 0.7);
+    color: var(--muted);
+    min-height: 1em;
+}
+
+/* Health drives its own colour rather than the team accent. */
+#card-health .card-value { color: var(--ok); }
+#card-health.is-hurt .card-value { color: var(--warn); }
+#card-health.is-hurt { border-left-color: var(--warn); }
+#card-health.is-critical .card-value { color: var(--danger); }
+#card-health.is-critical { border-left-color: var(--danger); }
+#card-health.is-dead .card-value { color: var(--muted); }
+
+#card-timer.is-bomb .card-value { color: var(--danger); }
+#card-timer.is-bomb { border-left-color: var(--danger); }
+#card-ammo.is-empty .card-value { color: var(--danger); }
+#card-ammo.is-reloading .card-label { color: var(--warn); }
+
+/* ------------------------------------------------------------------ extras */
+
+#extras {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--gap) * 0.6);
+}
+
+.chip {
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: var(--radius);
+    padding: calc(var(--u) * 0.25) calc(var(--u) * 0.6);
+    font-size: calc(var(--u) * 0.85);
+    display: flex;
+    align-items: baseline;
+    gap: 0.5em;
+    font-variant-numeric: tabular-nums;
+}
+
+.chip-label {
+    font-size: calc(var(--u) * 0.65);
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+}
+
+#chip-kit { border-color: var(--ok); color: var(--ok); font-weight: 700; }
+#chip-bombcarry { border-color: var(--warn); color: var(--warn); font-weight: 700; }
+
+/* ------------------------------------------------------------------- sound */
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: var(--radius);
+    padding: calc(var(--u) * 0.6);
+}
+
+.panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--gap);
+    margin-bottom: calc(var(--u) * 0.4);
+}
+
+.panel-head h2 {
+    margin: 0;
+    font-size: calc(var(--u) * 0.85);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.panel-note {
+    margin: calc(var(--u) * 0.4) 0 0;
+    font-size: calc(var(--u) * 0.68);
+    color: var(--muted);
+    line-height: 1.45;
+}
+
+#sound-canvas {
+    display: block;
+    width: 100%;
+    height: calc(var(--u) * 6);
+    border-radius: calc(var(--radius) * 0.7);
+    background: #0b0e13;
+}
+
+.button {
+    background: var(--accent);
+    color: #06090d;
+    border: none;
+    border-radius: var(--radius);
+    padding: calc(var(--u) * 0.3) calc(var(--u) * 0.9);
+    font-size: calc(var(--u) * 0.8);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.button:hover { filter: brightness(1.12); }
+.button.is-active { background: var(--danger); color: #fff; }
+
+/* ---------------------------------------------------------------- settings */
+
+#settings {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: min(calc(var(--u) * 18), 92vw);
+    overflow-y: auto;
+    background: #0d1116;
+    border-left: 1px solid var(--panel-edge);
+    padding: var(--gap);
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--gap) * 0.7);
+    font-size: calc(var(--u) * 0.78);
+    z-index: 10;
+}
+
+#settings h2 {
+    margin: 0;
+    font-size: calc(var(--u) * 0.9);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+#settings hr { border: none; border-top: 1px solid var(--panel-edge); margin: 0; }
+
+.field { display: flex; flex-direction: column; gap: 0.3em; }
+.field > span { color: var(--muted); font-size: calc(var(--u) * 0.7); text-transform: uppercase; letter-spacing: 0.06em; }
+.field-inline { flex-direction: row; align-items: center; gap: 0.6em; }
+.field-inline > span { text-transform: none; letter-spacing: 0; }
+
+#settings select,
+#settings input[type="range"] {
+    width: 100%;
+    background: var(--panel);
+    color: var(--fg);
+    border: 1px solid var(--panel-edge);
+    border-radius: calc(var(--radius) * 0.6);
+    padding: 0.35em 0.4em;
+    font-size: inherit;
+    font-family: inherit;
+}
+
+#settings input[type="range"] { padding: 0; accent-color: var(--accent); }
+#settings input[type="checkbox"] { width: 1.1em; height: 1.1em; accent-color: var(--accent); }
+
+/* A narrow window (the usual overlay case) drops to a single column. */
+@media (max-width: 620px) {
+    #vitals { grid-template-columns: repeat(2, 1fr); }
+    .card-value { font-size: calc(var(--u) * 2); }
+}
