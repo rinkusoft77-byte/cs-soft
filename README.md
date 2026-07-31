@@ -12,6 +12,9 @@ Bir joyda ikkita loyiha bo'lishining sababi: server plugini o'yinchi ko'rgan
 hamma joyda ishlaydi, lekin faqat *sizga tegishli* ma'lumotni ko'rsata oladi.
 Ikkalasida ham dushman joylashuvi yo'q.
 
+Yana ikki qo'llanma: FPS uchun **[PERFORMANCE.md](PERFORMANCE.md)**, serverni
+noldan o'rnatish uchun **[INSTALL.md](INSTALL.md)**.
+
 ---
 
 ## VisionAssist — server plugini

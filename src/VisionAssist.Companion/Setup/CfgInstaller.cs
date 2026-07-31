@@ -12,6 +12,17 @@ public sealed class CfgInstaller
     /// <summary>Optional readability convars; the player execs this one.</summary>
     public const string AccessibilityFileName = "visionassist_accessibility.cfg";
 
+    /// <summary>Optional performance convars; the player execs this one too.</summary>
+    public const string PerformanceFileName = "visionassist_performance.cfg";
+
+    /// <summary>Everything written by <see cref="Install"/>, in the order shown to the player.</summary>
+    public static readonly string[] FileNames =
+    {
+        GsiFileName,
+        AccessibilityFileName,
+        PerformanceFileName,
+    };
+
     private readonly string _templateFolder;
     private readonly CompanionConfig _config;
 
@@ -36,7 +47,7 @@ public sealed class CfgInstaller
 
         var results = new List<Result>();
 
-        foreach (string name in new[] { GsiFileName, AccessibilityFileName })
+        foreach (string name in FileNames)
         {
             string source = Path.Combine(_templateFolder, name);
             if (!File.Exists(source))

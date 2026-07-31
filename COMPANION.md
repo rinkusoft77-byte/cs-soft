@@ -40,6 +40,12 @@ Windows audio  ──ekran ulashish / Stereo Mix──────────�
 Butun ekran bo'ylab ogohlantirishlar: **BOMBA QO'YILDI**, **YONAYAPSIZ**,
 **KO'ZINGIZ KO'RMAYDI**, **TUTUN ICHIDA**.
 
+**Zararsizlantirish hisoblagichi.** Bomba qo'yilganda va siz CT bo'lsangiz,
+qolgan vaqtni kit borligiga solishtiradi (kit bilan 5 s, kitsiz 10 s) va
+yashil **ZARARSIZLANTIRISHGA YETADI +2.3s** yoki qizil **YETMAYDI** deb
+ko'rsatadi. Bu o'yinchi kallasida qiladigan hisobning o'zi — faqat tez va
+xato qilmasdan.
+
 Plugindagi **o'sha 7 rang to'plami** (`highcontrast`, `neon`, `deuteranopia`,
 `protanopia`, `tritanopia`, `soft`, `mono`), 4 o'lcham (S / M / L / XL) va uch
 til (o'zbek, rus, ingliz).
@@ -116,6 +122,7 @@ Steam kutubxonasini o'zi topadi va tasdiq so'ragandan keyin ikki fayl yozadi:
 |---|---|
 | `gamestate_integration_visionassist.cfg` | o'yin holatni shu dasturga yuboradi |
 | `visionassist_accessibility.cfg` | radar/prisel/HUD sozlamalari (o'zingiz `exec` qilasiz) |
+| `visionassist_performance.cfg` | FPS sozlamalari (o'zingiz `exec` qilasiz) — [PERFORMANCE.md](PERFORMANCE.md) |
 
 Topa olmasa yo'lni qo'lda ko'rsatasiz:
 
@@ -146,10 +153,15 @@ O'yin konsolida:
 
 ```
 exec visionassist_accessibility
+exec visionassist_performance
 ```
 
-Har safar avtomatik bo'lishi uchun `game\csgo\cfg\autoexec.cfg` ga shu qatorni
-yozib qo'yasiz.
+Har safar avtomatik bo'lishi uchun `game\csgo\cfg\autoexec.cfg` ga shu ikki
+qatorni yozib qo'yasiz.
+
+FPS bo'yicha to'liq qo'llanma — **[PERFORMANCE.md](PERFORMANCE.md)**. Qisqasi:
+`.cfg` dan katta foyda kutmang, asosiy narsa Video sozlamalarida
+(MSAA va Global Shadow Quality).
 
 ---
 
@@ -250,7 +262,17 @@ VisionAssist.Companion [options]
 | Taymer `–` | `phase_countdowns` bloki cfg'dan o'chib ketgan |
 | "Ovoz ulashilmadi" | Ekran tanlashda tizim ovozi belgisi qo'yilmagan |
 | Ovoz mono deb turadi | Windows'da chiqish qurilmasi stereo emas (masalan mono qilib qo'yilgan) |
+| "Ovoz kelmayapti — oqim butunlay jim" | Ulanish tirik, lekin ichida ovoz yo'q. Ekran ulashishda tizim ovozi belgisi qo'yilmagan, yoki Stereo Mix o'rniga mikrofon tanlangan |
+| "Ovoz o'lchagich ishga tushmadi" | AudioWorklet yuklanmadi. F5 bosing; ketmasa brauzer konsolini (F12) ochib xatoni ko'ring |
 | Ovoz paneli bo'sh | Manzil `127.0.0.1` emasmi? Boshqa IP'da brauzer ovoz olishga ruxsat bermaydi |
+
+Ovoz panelining chap yuqori burchagida **dB** raqami, o'ng yuqorisida **pan**
+raqami turadi. Ular ishlayotganini tekshirishning eng tez yo'li:
+
+- dB `-100` da qotib turgan bo'lsa — ovoz umuman kelmayapti;
+- dB o'zgarib turgan, pan esa `0.00` da qotgan bo'lsa — ovoz mono;
+- ikkalasi ham o'zgarib turgan bo'lsa — hammasi ishlayapti, sezgirlikni
+  sozlash kerak.
 | Overlay o'yin ustida ko'rinmaydi | Exclusive fullscreen. *Fullscreen Windowed* ga o'tkazing yoki ikkinchi monitor |
 
 ---
@@ -283,9 +305,14 @@ ko'rsatkichi ekranda muzlab qolardi.
 `requestAnimationFrame` sekinlashtiriladi, audio oqimi esa sekinlashtirilmaydi.
 Worklet har ~10 ms da kanal energiyasini hisoblab yuboradi.
 
-Zanjir: `MediaStreamSource → highpass 90Hz → lowpass 1200Hz → worklet`.
-`ctx.destination` ga hech narsa ulanmaydi — ovoz allaqachon karnayda,
-qayta ulash echo berardi.
+Zanjir:
+`MediaStreamSource → highpass 90Hz → lowpass 1200Hz → worklet → gain(0) → destination`.
+
+Oxirgi ikki bo'g'in muhim. Web Audio grafni **destination'dan orqaga qarab**
+tortadi: destination'ga yo'li bo'lmagan node umuman ishga tushmaydi, ya'ni
+`process()` chaqirilmaydi va hech qanday o'lchov kelmaydi. Shuning uchun yo'l
+bor, lekin `gain = 0` orqali — worklet chiqishiga hech narsa yozmaydi, ovoz
+esa allaqachon karnayda, qayta ulash echo berardi.
 
 Hodisa aniqlash ikkita eksponensial o'rtachaga tayanadi: tez (~30 ms, tovush
 hujumi) va sekin (~1.8 s, "hozirgi jimlik" darajasi). Tez o'rtacha sekinidan
@@ -318,7 +345,8 @@ src/VisionAssist.Companion/
 │   └── CfgInstaller.cs         .cfg fayllarini yozish
 ├── cfg/
 │   ├── gamestate_integration_visionassist.cfg
-│   └── visionassist_accessibility.cfg
+│   ├── visionassist_accessibility.cfg
+│   └── visionassist_performance.cfg
 └── wwwroot/
     ├── index.html
     ├── overlay.css             7 rang to'plami, 4 o'lcham

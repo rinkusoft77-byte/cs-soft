@@ -23,6 +23,13 @@
 <!-- Full-width warnings: things that need to be seen without looking for them. -->
 <section id="alerts" aria-live="polite"></section>
 
+<!--
+  Whether the bomb can still be defused with the time left. Derived entirely
+  from your own fuse countdown and whether you are carrying a kit - the same
+  arithmetic a player does in their head, done fast enough to be useful.
+-->
+<section id="defuse" class="hidden" aria-live="polite"></section>
+
 <main>
     <section id="vitals">
         <div class="card" id="card-health">

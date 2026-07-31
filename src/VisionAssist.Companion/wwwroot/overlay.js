@@ -33,6 +33,9 @@
             soundNoAudio: 'Ovoz ulashilmadi. Ekran tanlashda "Tizim ovozini ham ulashish" belgisini qo\'ying.',
             soundUnsupported: 'Brauzer bu funksiyani qo\'llab-quvvatlamaydi. Chrome yoki Edge ishlatib ko\'ring.',
             soundError: 'Ovozni yoqib bo\'lmadi',
+            soundStarting: 'Ishga tushirilmoqda...',
+            soundNoBlocks: "Ovoz o'lchagich ishga tushmadi. Sahifani yangilang (F5) va qayta urinib ko'ring.",
+            soundSilent: "Ovoz kelmayapti — oqim butunlay jim. Ekran ulashishda tizim ovozi belgisi qo'yilganmi? Yoki boshqa manba tanlang.",
             settings: 'Sozlamalar', language: 'Til', theme: "Rang to'plami", size: "O'lcham",
             transparent: "Shaffof fon (o'yin ustiga qo'yish uchun)", soundSource: 'Ovoz manbasi',
             sourceDisplay: 'Ekran ulashish (tizim ovozi)', sourceDevice: 'Kirish qurilmasi (Stereo Mix)',
@@ -40,6 +43,7 @@
             soundHelp: "Chap/o'ng aniqlanadi. Old va orqa farqi stereo signalda yo'q — buni hech qanday dastur ovozdan chiqarib bera olmaydi.",
             about: "Faqat o'zingizning holatingiz ko'rsatiladi. Dushman joylashuvi yo'q — GSI uni bermaydi va bu dastur o'yin xotirasini o'qimaydi.",
             left: 'CHAP', right: "O'NG",
+            defusePossible: "ZARARSIZLANTIRISHGA YETADI", defuseTooLate: "YETMAYDI — VAQT KAM",
             offline: "O'yin ma'lumot yubormayapti. CS2 ochiqmi? gamestate_integration_visionassist.cfg joyidami?",
             spectating: "Jonli raundda emassiz (menyu yoki kuzatuv).",
         },
@@ -60,6 +64,9 @@
             soundNoAudio: 'Звук не был передан. Отметьте «Поделиться системным звуком» при выборе экрана.',
             soundUnsupported: 'Браузер это не поддерживает. Попробуйте Chrome или Edge.',
             soundError: 'Не удалось включить звук',
+            soundStarting: 'Запуск...',
+            soundNoBlocks: 'Измеритель звука не запустился. Обновите страницу (F5) и попробуйте снова.',
+            soundSilent: 'Звук не поступает — поток полностью тихий. Отмечен ли системный звук при выборе экрана? Или выберите другой источник.',
             settings: 'Настройки', language: 'Язык', theme: 'Цветовая схема', size: 'Размер',
             transparent: 'Прозрачный фон (поверх игры)', soundSource: 'Источник звука',
             sourceDisplay: 'Захват экрана (системный звук)', sourceDevice: 'Устройство ввода (Stereo Mix)',
@@ -67,6 +74,7 @@
             soundHelp: 'Определяется только лево/право. Спереди/сзади в стереосигнале отсутствует — этого не может извлечь никакая программа.',
             about: 'Показывается только ваше собственное состояние. Позиций противников нет — GSI их не даёт, и эта программа не читает память игры.',
             left: 'ЛЕВО', right: 'ПРАВО',
+            defusePossible: 'ВРЕМЕНИ ХВАТАЕТ', defuseTooLate: 'НЕ ХВАТИТ ВРЕМЕНИ',
             offline: 'Игра ничего не присылает. CS2 запущен? gamestate_integration_visionassist.cfg на месте?',
             spectating: 'Вы не в живом раунде (меню или наблюдение).',
         },
@@ -87,6 +95,9 @@
             soundNoAudio: 'No audio was shared. Tick "Also share system audio" in the picker.',
             soundUnsupported: 'This browser does not support it. Try Chrome or Edge.',
             soundError: 'Could not start audio',
+            soundStarting: 'Starting...',
+            soundNoBlocks: 'The meter did not start. Reload the page (F5) and try again.',
+            soundSilent: 'No audio is arriving - the stream is completely silent. Was system audio ticked in the picker? Otherwise pick another source.',
             settings: 'Settings', language: 'Language', theme: 'Colour preset', size: 'Size',
             transparent: 'Transparent background (for stacking over the game)', soundSource: 'Audio source',
             sourceDisplay: 'Screen share (system audio)', sourceDevice: 'Input device (Stereo Mix)',
@@ -94,6 +105,7 @@
             soundHelp: 'Left and right only. Front versus back is not in a stereo signal - no program can recover it from audio.',
             about: 'Only your own state is shown. No enemy positions: GSI does not provide them and this program does not read game memory.',
             left: 'LEFT', right: 'RIGHT',
+            defusePossible: 'ENOUGH TIME TO DEFUSE', defuseTooLate: 'NOT ENOUGH TIME',
             offline: 'Nothing is arriving from the game. Is CS2 running, and is gamestate_integration_visionassist.cfg in place?',
             spectating: 'Not in a live round (menu or spectating).',
         },
@@ -147,7 +159,7 @@
 
         el('settings-about').textContent = t('about');
         renderSnapshot();
-        renderSoundStatus(sound.running ? (sound.stereo ? 'running' : 'running-mono') : 'stopped');
+        renderSoundStatus(sound.health);
     }
 
     function phaseLabel(phase) {
@@ -287,7 +299,38 @@
         }
 
         const elapsed = (performance.now() - countdown.at) / 1000;
-        el('value-timer').textContent = formatSeconds(Math.max(0, countdown.seconds - elapsed));
+        const remaining = Math.max(0, countdown.seconds - elapsed);
+        el('value-timer').textContent = formatSeconds(remaining);
+        renderDefuse(remaining);
+    }
+
+    // Defusing takes 10 s bare-handed and 5 s with a kit.
+    const DEFUSE_SECONDS = 10;
+    const DEFUSE_SECONDS_WITH_KIT = 5;
+
+    /**
+     * Can the bomb still be defused? Only shown to CTs while the fuse is
+     * burning, and only from your own kit flag and your own countdown.
+     */
+    function renderDefuse(remaining) {
+        const host = el('defuse');
+        const isCt = snapshot && (snapshot.team || '').toLowerCase() === 'ct';
+
+        if (!isCt || !snapshot.connected || snapshot.bombState !== 'planted'
+            || countdown.phase !== 'bomb') {
+            host.classList.add('hidden');
+            return;
+        }
+
+        const needed = snapshot.defuseKit ? DEFUSE_SECONDS_WITH_KIT : DEFUSE_SECONDS;
+        const spare = remaining - needed;
+        const possible = spare >= 0;
+
+        host.classList.remove('hidden');
+        host.className = 'alert ' + (possible ? 'alert-defuse' : 'alert-bomb');
+        host.textContent = possible
+            ? t('defusePossible') + '  +' + spare.toFixed(1) + 's'
+            : t('defuseTooLate');
     }
 
     // ------------------------------------------------------------ sound panel
@@ -375,32 +418,49 @@
             ctx2d.fill();
         }
         ctx2d.globalAlpha = 1;
+
+        // Numbers as well as a picture: when the panel looks dead, these are
+        // what tell you whether audio is arriving at all.
+        ctx2d.fillStyle = muted;
+        ctx2d.textAlign = 'left';
+        ctx2d.fillText(Math.round(sound.levelDb) + ' dB', pad, pad);
+        ctx2d.textAlign = 'right';
+        ctx2d.fillText(sound.blocks > 0 ? sound.pan.toFixed(2) : '--', width - pad, pad);
     }
+
+    const SOUND_NOTES = {
+        starting: 'soundStarting',
+        ok: 'soundRunning',
+        mono: 'soundMono',
+        'no-blocks': 'soundNoBlocks',
+        silent: 'soundSilent',
+        stopped: 'soundIdle',
+    };
 
     function renderSoundStatus(status) {
         const button = el('sound-toggle');
-        const note = el('sound-status');
+        const running = status !== 'stopped';
 
-        switch (status) {
-            case 'running':
-                button.textContent = t('soundStop');
-                button.classList.add('is-active');
-                note.textContent = t('soundRunning');
-                break;
-            case 'running-mono':
-                button.textContent = t('soundStop');
-                button.classList.add('is-active');
-                note.textContent = t('soundMono');
-                break;
-            default:
-                button.textContent = t('soundStart');
-                button.classList.remove('is-active');
-                note.textContent = t('soundIdle');
-                break;
-        }
+        button.textContent = running ? t('soundStop') : t('soundStart');
+        button.classList.toggle('is-active', running);
+        el('sound-status').textContent = t(SOUND_NOTES[status] || 'soundIdle');
     }
 
     sound.onstatus = renderSoundStatus;
+
+    /**
+     * A live capture that delivers nothing looks identical to a broken one from
+     * the outside, so the panel keeps re-checking instead of reporting once at
+     * startup and going quiet.
+     */
+    let lastSoundHealth = 'stopped';
+
+    function watchSoundHealth() {
+        const health = sound.health;
+        if (health === lastSoundHealth) return;
+        lastSoundHealth = health;
+        renderSoundStatus(health);
+    }
 
     async function toggleSound() {
         if (sound.running) {
@@ -609,6 +669,7 @@
         // fade events smoothly, and neither is worth its own timer.
         setInterval(renderTimer, 100);
         const frame = () => {
+            watchSoundHealth();
             drawSound();
             requestAnimationFrame(frame);
         };

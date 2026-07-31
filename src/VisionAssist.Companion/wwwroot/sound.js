@@ -44,12 +44,33 @@
             this.sensitivity = 0.5;
             this.onstatus = null;
 
+            /** Blocks received from the worklet. Zero while running means the graph is dead. */
+            this.blocks = 0;
+            /** performance.now() of the last block that was not digital silence. */
+            this.lastAudibleAt = 0;
+
             this._stream = null;
             this._ctx = null;
             this._node = null;
+            this._silence = null;
             this._fast = 0;
             this._baseline = 0;
             this._lastEventAt = 0;
+            this._startedAt = 0;
+        }
+
+        /**
+         * What the panel should tell the player right now. Separating this from
+         * "running" matters: a capture can be live and still deliver nothing,
+         * which is by far the most common way this ends up looking broken.
+         */
+        get health() {
+            if (!this.running) return 'stopped';
+            if (this.blocks === 0) {
+                return performance.now() - this._startedAt > 1500 ? 'no-blocks' : 'starting';
+            }
+            if (performance.now() - this.lastAudibleAt > 2000) return 'silent';
+            return this.stereo ? 'ok' : 'mono';
         }
 
         get supported() {
@@ -79,6 +100,10 @@
             const settings = typeof track.getSettings === 'function' ? track.getSettings() : {};
             this.stereo = settings.channelCount === undefined || settings.channelCount >= 2;
 
+            this.blocks = 0;
+            this.lastAudibleAt = 0;
+            this._startedAt = performance.now();
+
             await this._buildGraph(stream);
 
             // A stream that ends (the share was stopped from the browser's own
@@ -86,7 +111,7 @@
             track.addEventListener('ended', () => this.stop());
 
             this.running = true;
-            this._report(this.stereo ? 'running' : 'running-mono');
+            this._report(this.health);
         }
 
         stop() {
@@ -97,6 +122,11 @@
                 this._node.port.onmessage = null;
                 try { this._node.disconnect(); } catch (e) { /* already gone */ }
                 this._node = null;
+            }
+
+            if (this._silence) {
+                try { this._silence.disconnect(); } catch (e) { /* already gone */ }
+                this._silence = null;
             }
 
             if (this._stream) {
@@ -193,7 +223,8 @@
 
             const node = new AudioWorkletNode(ctx, 'visionassist-level', {
                 numberOfInputs: 1,
-                numberOfOutputs: 0,
+                numberOfOutputs: 1,
+                outputChannelCount: [1],
                 channelCount: 2,
                 channelCountMode: 'explicit',
                 channelInterpretation: 'discrete',
@@ -206,8 +237,18 @@
             highpass.connect(lowpass);
             lowpass.connect(node);
 
-            // Nothing is connected to ctx.destination: the game is already
-            // playing this audio, and routing it back would echo.
+            // Web Audio pulls the graph backwards from the destination: a node
+            // with no route to it is never asked to process, so process() would
+            // never run and no measurement would ever arrive. The route
+            // therefore exists, through a gain of zero - the worklet writes
+            // nothing to its output anyway, and the game is already playing
+            // this audio, so anything audible here would be an echo.
+            const silence = ctx.createGain();
+            silence.gain.value = 0;
+            node.connect(silence);
+            silence.connect(ctx.destination);
+            this._silence = silence;
+
             if (ctx.state === 'suspended') await ctx.resume();
         }
 
@@ -216,6 +257,11 @@
             const left = data.l || 0;
             const right = data.r || 0;
             const total = left + right;
+
+            this.blocks++;
+            // Below this the stream is digital silence, not quiet room tone -
+            // which usually means the wrong input device was picked.
+            if (total > 1e-9) this.lastAudibleAt = performance.now();
 
             this._fast = this._fast + FAST_ALPHA * (total - this._fast);
             this._baseline = this._baseline + BASELINE_ALPHA * (total - this._baseline);

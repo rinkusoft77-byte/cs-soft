@@ -186,8 +186,9 @@ public static class Program
         Console.WriteLine("About to write into:");
         Console.WriteLine($"  {target}");
         Console.WriteLine();
-        Console.WriteLine($"  {CfgInstaller.GsiFileName}      (read by CS2 on startup)");
-        Console.WriteLine($"  {CfgInstaller.AccessibilityFileName}   (only runs when you exec it)");
+        Console.WriteLine($"  {CfgInstaller.GsiFileName}           (read by CS2 on startup)");
+        Console.WriteLine($"  {CfgInstaller.AccessibilityFileName}  (only runs when you exec it)");
+        Console.WriteLine($"  {CfgInstaller.PerformanceFileName}    (only runs when you exec it)");
         Console.WriteLine();
 
         if (!options.AssumeYes && !Confirm())
@@ -195,6 +196,7 @@ public static class Program
             Console.WriteLine("Nothing was written.");
             return 1;
         }
+
 
         try
         {
@@ -214,6 +216,7 @@ public static class Program
         Console.WriteLine("  1. Restart CS2 - the GSI file is only read at startup.");
         Console.WriteLine("  2. Start this app and leave it running.");
         Console.WriteLine("  3. In the game console:  exec visionassist_accessibility");
+        Console.WriteLine("                           exec visionassist_performance");
         return 0;
     }
 
