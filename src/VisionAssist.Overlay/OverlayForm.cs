@@ -26,6 +26,8 @@ internal sealed class OverlayForm : Form
     private readonly OverlaySettings _settings;
     private readonly GsiHost _gsi;
     private readonly SoundMeter _sound;
+    private readonly Announcer _announcer;
+    private readonly SoundFlashForm _flash;
     private readonly AltTapHook _hook = new();
     private readonly System.Windows.Forms.Timer _timer;
 
@@ -46,6 +48,8 @@ internal sealed class OverlayForm : Form
         _settings = settings;
         _gsi = gsi;
         _sound = sound;
+        _announcer = new Announcer(settings, sound);
+        _flash = new SoundFlashForm(settings, sound);
         _palette = Palette.Find(settings.Theme);
 
         Strings.Language = settings.Language;
@@ -107,7 +111,7 @@ internal sealed class OverlayForm : Form
             TrayNotify("Alt tugmasi ishlamaydi (hook o'rnatilmadi). Menyu tray orqali ochiladi.");
         }
 
-        if (_settings.SoundEnabled) StartSound();
+        if (_settings.NeedsSoundMeter) StartSound();
     }
 
     // ------------------------------------------------------------- appearance
@@ -649,6 +653,17 @@ internal sealed class OverlayForm : Form
     {
         _gsi.CheckStale();
 
+        var snapshot = _gsi.Current;
+
+        // Both of these want the interpolated countdown, not the value as it
+        // arrived, or the spoken "ten" would land up to 100 ms late.
+        double? countdown = snapshot.CountdownSeconds is double seconds
+            ? Math.Max(0, seconds - _gsi.MillisecondsSinceUpdate / 1000.0)
+            : null;
+
+        _announcer.Update(snapshot, countdown);
+        _flash.Tick();
+
         // A game going fullscreen pushes every other window down the z-order.
         Win32.PushToTop(Handle);
 
@@ -700,10 +715,14 @@ internal sealed class OverlayForm : Form
         _settings.Save();
         ApplyGeometry();
 
-        if (_settings.SoundEnabled && !_sound.Running) StartSound();
-        else if (!_settings.SoundEnabled && _sound.Running) _sound.Stop();
+        if (_settings.NeedsSoundMeter && !_sound.Running) StartSound();
+        else if (!_settings.NeedsSoundMeter && _sound.Running) _sound.Stop();
 
         _sound.Sensitivity = _settings.SoundSensitivity;
+        _announcer.SettingsChanged();
+
+        if (_settings.SpeechEnabled && !_announcer.Available && _announcer.LastError is string error)
+            TrayNotify($"{Strings.Get("speechFailed")}: {error}");
     }
 
     private void StartSound()
@@ -726,6 +745,8 @@ internal sealed class OverlayForm : Form
             _timer.Stop();
             _timer.Dispose();
             _hook.Dispose();
+            _announcer.Dispose();
+            _flash.Dispose();
             _settingsForm?.Dispose();
             _labelFont?.Dispose();
             _valueFont?.Dispose();

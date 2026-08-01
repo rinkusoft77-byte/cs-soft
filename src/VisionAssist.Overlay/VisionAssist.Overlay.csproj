@@ -27,6 +27,11 @@
     <!-- WASAPI loopback capture: reads what the speakers are playing with no
          permission prompt at all, unlike the browser's screen-share route. -->
     <PackageReference Include="NAudio" Version="2.2.1" />
+
+    <!-- Windows SAPI. Speaks the player's own health, ammo and bomb timer, for
+         someone who cannot read a number on screen fast enough. Windows-only,
+         which this project already is. -->
+    <PackageReference Include="System.Speech" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>

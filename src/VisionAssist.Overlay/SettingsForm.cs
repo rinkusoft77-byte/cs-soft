@@ -27,6 +27,9 @@ internal sealed class SettingsForm : Form
     private readonly CheckBox _soundEnabled = new();
     private readonly TrackBar _sensitivity = new();
     private readonly CheckBox _onlyOverGame = new();
+    private readonly CheckBox _edgeFlash = new();
+    private readonly CheckBox _speech = new();
+    private readonly TrackBar _speechRate = new();
 
     /// <summary>
     /// Labels and buttons created by <see cref="BuildControls"/>. Tracked so a
@@ -67,8 +70,11 @@ internal sealed class SettingsForm : Form
         _corner.SelectedIndexChanged += (_, _) => OnChanged();
         _opacity.Scroll += (_, _) => OnChanged();
         _sensitivity.Scroll += (_, _) => OnChanged();
+        _speechRate.Scroll += (_, _) => OnChanged();
         _soundEnabled.CheckedChanged += (_, _) => OnChanged();
         _onlyOverGame.CheckedChanged += (_, _) => OnChanged();
+        _edgeFlash.CheckedChanged += (_, _) => OnChanged();
+        _speech.CheckedChanged += (_, _) => OnChanged();
 
         BuildControls();
         LoadValues();
@@ -116,7 +122,7 @@ internal sealed class SettingsForm : Form
             combo.Size = new Size(328, 24);
         }
 
-        foreach (var slider in new[] { _opacity, _sensitivity })
+        foreach (var slider in new[] { _opacity, _sensitivity, _speechRate })
         {
             slider.TickStyle = TickStyle.None;
             slider.Size = new Size(332, 28);
@@ -127,8 +133,10 @@ internal sealed class SettingsForm : Form
         _opacity.Maximum = 100;
         _sensitivity.Minimum = 0;
         _sensitivity.Maximum = 100;
+        _speechRate.Minimum = 0;
+        _speechRate.Maximum = 100;
 
-        foreach (var check in new[] { _soundEnabled, _onlyOverGame })
+        foreach (var check in new[] { _soundEnabled, _onlyOverGame, _edgeFlash, _speech })
         {
             check.ForeColor = Palette.Foreground;
             check.AutoSize = true;
@@ -175,7 +183,26 @@ internal sealed class SettingsForm : Form
         _onlyOverGame.Text = OnlyOverGameLabel();
         _onlyOverGame.Location = new Point(16, y);
         Controls.Add(_onlyOverGame);
-        y += 32;
+        y += 34;
+
+        // Two accessibility sections, labelled by who they are for rather than by
+        // what they technically do - that is how someone picking settings for a
+        // specific difficulty will look for them.
+        y = AddSectionHeader(Strings.Get("forDeaf"), y);
+
+        _edgeFlash.Text = Strings.Get("edgeFlash");
+        _edgeFlash.Location = new Point(16, y);
+        Controls.Add(_edgeFlash);
+        y += 34;
+
+        y = AddSectionHeader(Strings.Get("forBlind"), y);
+
+        _speech.Text = Strings.Get("speech");
+        _speech.Location = new Point(16, y);
+        Controls.Add(_speech);
+        y += 30;
+
+        y = AddField(_speechRate, Strings.Get("speechRate"), y, null);
 
         y = AddOwnedLabel(Strings.Get("onlyOwnData"), y, Palette.Muted, null, height: 36) + 8;
 
@@ -226,6 +253,23 @@ internal sealed class SettingsForm : Form
         Controls.Add(input);
 
         return y + 52;
+    }
+
+    /// <summary>A divider plus a caption, to break the list into sections.</summary>
+    private int AddSectionHeader(string text, int y)
+    {
+        var rule = new Label
+        {
+            AutoSize = false,
+            Size = new Size(328, 1),
+            Location = new Point(16, y),
+            BackColor = Palette.Edge,
+        };
+        Controls.Add(rule);
+        _owned.Add(rule);
+
+        return AddOwnedLabel(text, y + 9, Palette.Muted,
+            new Font("Segoe UI", 9f, FontStyle.Bold)) + 4;
     }
 
     private int AddOwnedLabel(string text, int y, Color colour, Font? font, int height = 20)
@@ -286,6 +330,9 @@ internal sealed class SettingsForm : Form
         _soundEnabled.Checked = _settings.SoundEnabled;
         _sensitivity.Value = Math.Clamp((int)Math.Round(_settings.SoundSensitivity * 100), 0, 100);
         _onlyOverGame.Checked = _settings.OnlyOverGame;
+        _edgeFlash.Checked = _settings.EdgeFlashEnabled;
+        _speech.Checked = _settings.SpeechEnabled;
+        _speechRate.Value = Math.Clamp((int)Math.Round(_settings.SpeechRate * 100), 0, 100);
     }
 
     private void OnChanged()
@@ -303,6 +350,9 @@ internal sealed class SettingsForm : Form
         _settings.SoundEnabled = _soundEnabled.Checked;
         _settings.SoundSensitivity = _sensitivity.Value / 100.0;
         _settings.OnlyOverGame = _onlyOverGame.Checked;
+        _settings.EdgeFlashEnabled = _edgeFlash.Checked;
+        _settings.SpeechEnabled = _speech.Checked;
+        _settings.SpeechRate = _speechRate.Value / 100.0;
 
         Strings.Language = _settings.Language;
         _sound.Sensitivity = _settings.SoundSensitivity;

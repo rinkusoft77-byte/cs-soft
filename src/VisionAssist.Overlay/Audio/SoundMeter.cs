@@ -50,6 +50,7 @@ internal sealed class SoundMeter : IDisposable
     private long _blocks;
     private long _lastAudibleAt;
     private long _startedAt;
+    private long _suppressedUntil;
 
     /// <summary>0.0 = only obvious sounds, 1.0 = very twitchy.</summary>
     public double Sensitivity { get; set; } = 0.5;
@@ -85,6 +86,23 @@ internal sealed class SoundMeter : IDisposable
                 if (now - _lastAudibleAt > 2000) return SoundHealth.Silent;
                 return Stereo ? SoundHealth.Ok : SoundHealth.Mono;
             }
+        }
+    }
+
+    /// <summary>
+    /// Stops new transients being recorded for a moment.
+    ///
+    /// Needed because the spoken announcements go to the same output device this
+    /// class is capturing: without it, every announcement would be measured as a
+    /// loud event coming from dead centre, and one announcement could trigger the
+    /// next. Levels keep updating - only event detection pauses.
+    /// </summary>
+    public void SuppressFor(TimeSpan duration)
+    {
+        long until = Environment.TickCount64 + (long)duration.TotalMilliseconds;
+        lock (_gate)
+        {
+            if (until > _suppressedUntil) _suppressedUntil = until;
         }
     }
 
@@ -268,7 +286,7 @@ internal sealed class SoundMeter : IDisposable
             // which normally means the wrong output device is the default one.
             if (total > 1e-9) _lastAudibleAt = now;
 
-            if (now - _lastEventAt >= EventCooldownMs)
+            if (now >= _suppressedUntil && now - _lastEventAt >= EventCooldownMs)
             {
                 double ratioNeeded = 6 - 4 * Sensitivity;
                 double dbNeeded = -78 + (1 - Sensitivity) * 22;

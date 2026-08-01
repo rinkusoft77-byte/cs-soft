@@ -104,6 +104,9 @@ bosib bo'lmasdi), yopilganda yana o'tkazib yuborishga qaytadi.
 | **Ovoz yo'nalishi** | Yoqish / o'chirish |
 | **Sezgirlik** | Ovoz hodisalari qanchalik oson belgilanadi |
 | **Faqat CS2 oldinda** | Boshqa oynada ishlaganda HUD yashirinadi |
+| **Ekran chetida yorug'lik** | Eshitmaydigan odam uchun — pastda batafsil |
+| **Ovozli e'lonlar** | Ko'zi ko'rmaydigan odam uchun — pastda batafsil |
+| **Nutq tezligi** | Sekin va tushunarli ↔ tez |
 
 Har bir o'zgarish darhol qo'llanadi va `overlay.json` ga yoziladi.
 
@@ -160,6 +163,68 @@ so'nib boradigan nuqtalar (qadamlar ritmi ko'rinadi). Qattiq tovushlar
 
 ---
 
+## Eshitmaydigan odam uchun: ekran chetida yorug'lik
+
+HUD'dagi kichik ovoz paneli ishlaydi, lekin unga **qarab turish** kerak — o'ynayotganda esa odam priselga qaraydi. Shuning uchun alohida rejim bor: butun ekranni qoplaydigan shaffof oyna, ovoz kelgan **chetni yoritadi**.
+
+Uch zona, chunki stereo signal aynan uchta halol javobni ko'taradi:
+
+| Zona | Qayerda yonadi |
+|---|---|
+| Chap | Ekranning chap cheti |
+| O'ng | Ekranning o'ng cheti |
+| O'rta | Yuqori chetning o'rtasi (uchdan bir kenglikda) |
+
+O'rta zona **"oldinda yoki orqada"** degani — qaysi biri ekanini aytmaydi, chunki bu ma'lumot ovozda yo'q. Ataylab shunday: yolg'on aniqlik yolg'on qarorga olib keladi.
+
+Yorqinligi tovush kuchiga bog'liq, ~400 ms da so'nadi. O'q va portlashlar qizil, qadamlar rang to'plamining rangida. Chetdan ichkariga qarab so'nib boradi — bu "yorug'lik" bo'lib ko'rinadi, o'yin ustidagi qattiq blok emas.
+
+Hech narsa bo'lmasa oyna butunlay yashiriladi — shaffof to'liq ekran oynasini doim chizib turish resurs oladi.
+
+**Muhim:** bu ovoz o'lchagichga tayanadi, ya'ni menyuda "Ovoz yo'nalishi" o'chirilgan bo'lsa ham o'lchagich ishlaydi (`NeedsSoundMeter`). Ikkalasini ham o'chirsangiz o'lchagich to'xtaydi.
+
+---
+
+## Ko'zi ko'rmaydigan odam uchun: ovozli e'lonlar
+
+Raqamni katta qilib chizish har doim yetarli emas — HUD'ni topib, unga ko'z tikish kerak. Eshitish tezroq. Windows SAPI orqali dastur o'z holatini gapiradi:
+
+| Nima | Qachon |
+|---|---|
+| Jon raqami | 5 va undan ko'p jon ketganda |
+| "Mало здоровья / low health" + raqam | Chegaradan (standart 35) pastga tushganda, boshqa gaplarni uzib |
+| "Патроны / ammo" + raqam | Magazin choragidan kam qolganda, magazinda bir marta |
+| "Нет патронов / out of ammo" | O'q tugaganda |
+| "Бомба установлена" | Bomba qo'yilganda |
+| 20, 10, 5 | Bomba fitili shu soniyalarda — qaror o'zgaradigan nuqtalar |
+| "Разминирована" / "Взрыв" | Bomba zararsizlantirilganda / portlaganda |
+
+Gaplar **qisqa** — uzun jumla o'qib bo'lguncha vaziyat o'zgarib ketadi. Ustuvorlik bor: shoshilinch gap oddiy gapni uzadi, teskarisi emas.
+
+### Til haqida rostini aytish
+
+Windows'da **o'zbek tili uchun TTS ovozi yo'q**. Shuning uchun o'zbek tili tanlanganda e'lonlar **ruscha** aytiladi — raqamlar va ikki-uch so'z, tushunarli bo'lishi uchun. Inglizcha tanlansa inglizcha aytadi. Ovoz umuman o'rnatilmagan bo'lsa dastur tray orqali xabar beradi va HUD baribir ishlashda davom etadi.
+
+Ovoz o'rnatish: **Settings → Time & Language → Speech → Manage voices → Add voices**.
+
+### Bitta texnik nozik joy
+
+E'lonlar o'sha karnaydan chiqadi, ovoz o'lchagich esa aynan o'sha karnayni tinglaydi. Shuning uchun har bir gapdan oldin o'lchagichning **hodisa aniqlash** qismi vaqtincha to'xtatiladi (`SoundMeter.SuppressFor`). Bo'lmasa har bir e'lon o'rtadan kelgan qattiq tovush bo'lib belgilanardi va bir e'lon ikkinchisini chaqirardi. Daraja o'lchash to'xtamaydi — faqat hodisa aniqlash.
+
+### `overlay.json` dagi qo'shimcha kalitlar
+
+Menyuda hammasi yo'q, chunki menyu cho'zilib ketardi. JSON'da:
+
+| Kalit | Standart |
+|---|---|
+| `AnnounceHealth` | `true` |
+| `AnnounceAmmo` | `true` |
+| `AnnounceBomb` | `true` |
+| `AnnounceRound` | `false` — raund boshlanishini ham aytadi |
+| `SpeechVolume` | `0.9` |
+
+---
+
 ## Nima qilmaydi
 
 | Narsa | Holati |
@@ -167,6 +232,9 @@ so'nib boradigan nuqtalar (qadamlar ritmi ko'rinadi). Qattiq tovushlar
 | O'z joni / o'qi / taymeri, kattalashtirilib | ✅ |
 | O'yin ustida turish, Alt menyusi | ✅ |
 | Ovozni ko'rinadigan qilish (chap/o'ng) | ✅ |
+| Ekran chetida yorug'lik (kar odam uchun) | ✅ |
+| Ovozli e'lonlar (ko'zi ko'rmas odam uchun) | ✅ |
+| **Xarita rangini o'zgartirish, fonni qoraytirish** | ❌ **yo'q** |
 | **Dushman modelini bo'yash, kallani ajratish** | ❌ **yo'q** |
 | **Dushmanlarni radarda ko'rsatish** | ❌ **yo'q** |
 | Exclusive fullscreen ustida chizish | ❌ Fullscreen Windowed kerak |
@@ -198,6 +266,9 @@ uchun bir xil bo'ladi. Batafsil: [INSTALL.md](INSTALL.md).
 | "OVOZ MONO" | Chiqish stereo emas. Windows → Sound → qurilma xossalari → stereo |
 | HUD sichqonchani ushlab qoladi | Menyu ochiq qolgan. Esc bosing |
 | Dasturdan chiqish | Tray → "Dasturdan chiqish", yoki menyudagi qizil tugma |
+| Ekran cheti yonmaydi | Ovoz o'lchagich ishlamayapti. HUD'dagi ovoz panelida `dB` raqami o'zgarib turishi kerak |
+| Ovozli e'lonlar jim | Windows'da TTS ovozi o'rnatilmagan. Settings → Time & Language → Speech → Add voices |
+| E'lonlar o'zini qayta ushlaydi | Bo'lmasligi kerak — `SuppressFor` buni to'sadi. Bo'lsa aytingiz |
 
 ---
 
@@ -214,9 +285,12 @@ src/VisionAssist.Overlay/
 ├── Native/
 │   ├── Win32.cs                  oyna uslublari, z-order, hook, foreground
 │   └── AltTapHook.cs             Alt "tap" ni aniqlash (bosib turish emas)
+├── SoundFlashForm.cs             to'liq ekran, chetdagi yorug'lik (kar odam uchun)
 ├── Audio/
 │   ├── SoundMeter.cs             WASAPI loopback + hodisa aniqlash
 │   └── Biquad.cs                 highpass / lowpass filtrlar
+├── Speech/
+│   └── Announcer.cs              Windows SAPI e'lonlari (ko'zi ko'rmas odam uchun)
 └── UI/
     ├── Palette.cs                7 rang to'plami
     └── Strings.cs                uz / ru / en

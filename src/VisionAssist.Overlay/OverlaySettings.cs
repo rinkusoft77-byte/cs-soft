@@ -44,6 +44,40 @@ internal sealed class OverlaySettings
     [JsonPropertyName("LowHealthThreshold")]
     public int LowHealthThreshold { get; set; } = 35;
 
+    // ------------------------------------------------- for a player who cannot hear
+
+    /// <summary>
+    /// Flash the screen edge a sound came from. Reaches peripheral vision, which
+    /// the small HUD panel does not while you are looking at the crosshair.
+    /// </summary>
+    [JsonPropertyName("EdgeFlashEnabled")]
+    public bool EdgeFlashEnabled { get; set; } = true;
+
+    // -------------------------------------------------- for a player who cannot see
+
+    /// <summary>Speak health, ammo and the bomb timer through Windows SAPI.</summary>
+    [JsonPropertyName("SpeechEnabled")]
+    public bool SpeechEnabled { get; set; } = false;
+
+    /// <summary>0 = slow and clear, 1 = fast. Maps onto SAPI's -2..6.</summary>
+    [JsonPropertyName("SpeechRate")]
+    public double SpeechRate { get; set; } = 0.55;
+
+    [JsonPropertyName("SpeechVolume")]
+    public double SpeechVolume { get; set; } = 0.9;
+
+    [JsonPropertyName("AnnounceHealth")]
+    public bool AnnounceHealth { get; set; } = true;
+
+    [JsonPropertyName("AnnounceAmmo")]
+    public bool AnnounceAmmo { get; set; } = true;
+
+    [JsonPropertyName("AnnounceBomb")]
+    public bool AnnounceBomb { get; set; } = true;
+
+    [JsonPropertyName("AnnounceRound")]
+    public bool AnnounceRound { get; set; } = false;
+
     /// <summary>
     /// Hide the HUD whenever CS2 is not the window in front. Off means it stays
     /// on top of everything, which is what you want while setting it up.
@@ -56,6 +90,14 @@ internal sealed class OverlaySettings
 
     [JsonPropertyName("Token")]
     public string Token { get; set; } = "visionassist-local";
+
+    /// <summary>
+    /// Whether the loopback capture has to run at all. The edge flash is fed by
+    /// the same meter as the HUD panel, so either one being on is enough - without
+    /// this, ticking only the flash would silently do nothing.
+    /// </summary>
+    [JsonIgnore]
+    public bool NeedsSoundMeter => SoundEnabled || EdgeFlashEnabled;
 
     // ------------------------------------------------------------------ sizes
 
@@ -118,6 +160,8 @@ internal sealed class OverlaySettings
         Opacity = Math.Clamp(Opacity, 0.35, 1.0);
         SoundSensitivity = Math.Clamp(SoundSensitivity, 0, 1);
         LowHealthThreshold = Math.Clamp(LowHealthThreshold, 1, 99);
+        SpeechRate = Math.Clamp(SpeechRate, 0, 1);
+        SpeechVolume = Math.Clamp(SpeechVolume, 0, 1);
         if (Port is < 1 or > 65535) Port = 47474;
         if (!Strings.Languages.Contains(Language)) Language = "uz";
 
